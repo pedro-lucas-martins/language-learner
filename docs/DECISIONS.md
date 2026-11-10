@@ -22,6 +22,11 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Decision:** allow it only when `APP_ENV=development`.
 - **Consequence:** production accepts only the real frontend and its own Vercel previews. SPEC §3 updated.
 
+## 005 — Pronunciation feedback with Gemini only, recast on by default (2026-11-10)
+- **Context:** the author wants pronunciation corrected during the conversation. Azure Pronunciation Assessment supports pl-PL and pt-BR, but phoneme names and prosody are en-US only, and at ~26 h of learner audio per month (2 people × 2 h/day) it would add ~US$ 26–35/month.
+- **Decision:** no Azure. Gemini receives the learner's audio in both tracks: Track 1 recasts a clearly mispronounced word naturally in its reply (setting, default ON); Track 2 returns explicit pronunciation items with tips, plus a listen-and-repeat drill.
+- **Consequence:** pronunciation feedback is qualitative (no phoneme scores) and can miss or invent issues; mitigated by "report only when sure" prompting and `stt_eval.py` clips with deliberate mispronunciations. Extra cost is small (audio tokens on the chat call). Estimated total for 1 learner × 2 h/day: ~US$ 28–35/month (see the conversation estimate of 2026-11-10; recheck prices before relying on it).
+
 ## Provider choices (fill in when keys are created)
 
 | Setting | Value | Price checked | Date |

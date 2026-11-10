@@ -10,17 +10,18 @@ If code and this spec disagree, stop and ask the user which one is right.
 A voice-and-text conversation partner for exactly two languages: **Brazilian Portuguese (pt-BR)** and **Polish (pl-PL)**.
 It is **bidirectional**: each user has a `native_lang` and a `target_lang`.
 
-| Direction | Learner | AI speaks | Grammar explanations in |
+| Direction | Learner | AI speaks | Explanations (grammar, pronunciation) in |
 |---|---|---|---|
 | PT→PL | Brazilian learning Polish | pl-PL | pt-BR |
 | PL→PT | Pole learning Portuguese | pt-BR | pl-PL |
 
-Both directions are first-class: every feature (prompts, topics, grammar rules, voices, UI strings) must exist for both.
+Both directions are first-class: every feature (prompts, topics, grammar and pronunciation rules, voices, UI strings) must exist for both.
 The UI language follows `native_lang` (simple i18n dictionary, two locales: `pt-BR`, `pl-PL`).
 
 Core experience: **free talk** with a friendly native-speaker AI, adapted to the learner's CEFR level (A1–C1), plus:
 - **Topic suggestions** when the learner gets stuck (zero LLM tokens).
-- **Async grammar feedback** shown beside the conversation, never interrupting it.
+- **Async grammar and pronunciation feedback** shown beside the conversation, never interrupting it.
+- **Pronunciation recast in the conversation**: the AI naturally echoes a mispronounced word correctly (on by default, can be turned off).
 - **Flashcards (SM-2)** generated from the learner's own mistakes.
 
 ### Hard constraint: small, predictable monthly cost
@@ -41,7 +42,7 @@ Paid services allowed: **Google Gemini API (paid tier)** and **ElevenLabs (subsc
 | Backend | Python 3.11+, FastAPI, WebSockets | Container on a free PaaS (Render free tier by default) |
 | DB | PostgreSQL — Supabase free in prod, Docker locally | SQLAlchemy 2.0 async + Alembic migrations |
 | Session state | In-process memory per WebSocket + persisted to Postgres | **No Redis.** Single backend instance is assumed |
-| LLM | Gemini API, paid tier (`google-genai` SDK) | Two roles with separate env vars: `GEMINI_CHAT_MODEL` (conversation — stronger Flash-tier) and `GEMINI_UTILITY_MODEL` (grammar JSON, summaries, user_facts — Flash-Lite tier) |
+| LLM | Gemini API, paid tier (`google-genai` SDK) | Two roles with separate env vars: `GEMINI_CHAT_MODEL` (conversation — stronger Flash-tier) and `GEMINI_UTILITY_MODEL` (grammar + pronunciation JSON, summaries, user_facts, STT — Flash-Lite tier). Both receive audio on voice turns (§4.1, §5) |
 | STT | Gemini audio understanding (`GEMINI_STT_MODEL`) | Single provider. Keep it in its own `stt_service.py` so it stays isolated from the chat logic |
 | TTS | ElevenLabs streaming TTS (`ELEVENLABS_MODEL`, default a low-latency Flash model), behind a `TtsProvider` interface | Fallback chain: ElevenLabs → `edge-tts` → browser `speechSynthesis`. See §6 |
 
@@ -53,7 +54,7 @@ The Gemini paid tier is required (not free tier) because free-tier content may b
 ## 3. Users, access and security
 
 - Small number of known users (personal project). No public sign-up.
-- `users` table: `id, name, native_lang, target_lang, level, user_facts (≤100 words), voice_id, access_token_hash, created_at`.
+- `users` table: `id, name, native_lang, target_lang, level, user_facts (≤100 words), voice_id, recast_pronunciation (bool, default true), access_token_hash, created_at`.
 - `usage_events` table: `user_id, kind (llm_in|llm_out|stt_audio_s|tts_chars), model, amount, created_at` — the single source for daily caps, monthly spend estimate and the usage HUD.
 - A CLI script `backend/scripts/create_user.py` creates a user and prints a random access token once (store only the hash).
 - Frontend: a login screen asking for the token; stored in `localStorage` (wrapped in try/catch).
@@ -83,6 +84,9 @@ Level rules:
 
 Track 1 reply limits: 1–2 sentences + 1 short question, in `target_lang` only. Never explain grammar in Track 1.
 
+**Pronunciation recast in conversation (default ON, per-user setting `users.recast_pronunciation`):**
+For voice turns, Track 1 receives the user's **audio** together with the verbatim transcript (the chat model listens, it does not just read). When the user clearly mispronounces a word, the reply naturally reuses that word pronounced correctly — the way a native friend would echo it — at most once per reply, without saying "you pronounced it wrong" and without any explanation. Explanations belong to Track 2 only. If the setting is OFF, or the turn was typed, Track 1 gets text only and never recasts.
+
 ### 4.2 Memory window (fixes the context gap)
 - Window = last `WINDOW_TURNS` turns (default 3 turns = 6 messages).
 - **Invariant: every message is either inside the window or already folded into `running_summary`.**
@@ -96,30 +100,48 @@ Track 1 reply limits: 1–2 sentences + 1 short question, in `target_lang` only.
 
 ---
 
-## 5. Grammar track (Track 2)
+## 5. Feedback track (Track 2): grammar + pronunciation
 
-Runs asynchronously on each user utterance with ≥3 words, in parallel with Track 1. Uses the cheap model.
+Runs asynchronously on each user utterance with ≥3 words, in parallel with Track 1. Uses the utility model.
+For voice turns it receives the **audio and the verbatim transcript** in one call and returns grammar and pronunciation feedback together. For typed turns (or after a `regrade`), it gets text only and returns grammar only.
 
 Response schema (strict JSON, validated with Pydantic; on invalid JSON → ignore silently and log):
 ```json
-{"ok": false, "errs": [{"e": "error substring", "c": "corrected form", "r": "short rule in native_lang", "p": "PT⇄PL contrast tip in native_lang"}]}
+{"ok": false,
+ "errs": [{"e": "error substring", "c": "corrected form", "r": "short rule in native_lang", "p": "PT⇄PL contrast tip in native_lang"}],
+ "pron": [{"w": "word (correct spelling)", "heard": "approximation of what was said", "tip": "practical articulation tip in native_lang", "sev": "major|minor"}]}
 ```
-or exactly `{"ok": true}`. Max 3 errors per utterance, most important first.
+or exactly `{"ok": true}` when both lists would be empty. Max 3 grammar errors and 3 pronunciation issues, most important first.
 
-Contrastive focus:
+Pronunciation rules for the prompt:
+- Report only issues that change meaning or clearly mark a foreign accent (`major`), or recurring ones (`minor`). Ignore normal accent and fast-speech reductions. When unsure, do not report.
+- Never report pronunciation for words the transcript shows were not said.
+- This is a qualitative judgment by an LLM (no phoneme scores). Document it in `docs/ARCHITECTURE.md` as a known limitation and verify it with `stt_eval.py` clips containing deliberate mispronunciations.
+
+Contrastive focus — grammar:
 - **PT→PL**: 7 cases (mianownik … wołacz), verbal aspect (dokonany/niedokonany), no articles, gender of past tense, numerals with genitive.
 - **PL→PT**: articles (o/a/um/uma), ser vs estar, pretérito perfeito vs imperfeito, subjuntivo, prepositions + contractions (no, na, do, da).
+
+Contrastive focus — pronunciation:
+- **PT→PL** (Brazilian speaking Polish): sz / ś / s, cz / ć / c, rz-ż / ź / z, dz-dż-dź, ł (≈ English w, not l), nasal ą / ę (and their denasalization before stops), y vs i, stress on the penultimate syllable, no vowel added after final consonants ("Polski" not "Polsqui"), no vowel reduction.
+- **PL→PT** (Pole speaking Portuguese): nasal vowels and diphthongs (ão, õe, ãe, em/im final), open vs closed é/ê and ó/ô, lh and nh, r / rr and the soft r between vowels, final unstressed -e ≈ i and -o ≈ u, t/d before i (tchi, dji), s/z between vowels, word stress (avó vs avô).
+
+### Practice: listen and repeat
+- Each pronunciation item in the panel has: ▶ listen (correct word via the user's TTS voice, normal and 0.8× via `playbackRate`; cached per §6), and 🎙 try again.
+- "Try again" records only that word/phrase and sends `pron_retry` (§7). The utility model judges that single attempt against the target word and returns `pron_result` with `better: bool` and a short tip. Recorded in `usage_events` like any other call.
 
 ### STT normalization problem
 LLM-based speech-to-text (like Gemini) tends to "fix" learners' grammar, hiding mistakes. Mitigations (all required):
 - Instruct the STT model to transcribe verbatim, keeping grammatical errors, hesitations and wrong word endings; never correct. Temperature 0, plain text output only.
-- Ship `backend/scripts/stt_eval.py`: runs a folder of user-recorded test clips (deliberate errors, both languages) through the STT and prints each transcript next to the expected text, so the user can tune the STT prompt/model empirically.
+- Ship `backend/scripts/stt_eval.py`: runs a folder of user-recorded test clips (deliberate errors, both languages) through the STT and the feedback track, printing each transcript and the pronunciation items next to the expected text and the expected mispronunciations, so the user can tune prompts/models empirically.
 - Show the transcript in the chat as editable: the user can tap it, fix what was actually said, and re-run the grammar check for that message (`{"type":"regrade", ...}`).
 - Text input is always available as an alternative to voice.
 - Document this as a known limitation in `docs/ARCHITECTURE.md`.
 
 ### Flashcards
-- Each grammar error can become a flashcard (front: the wrong form in context; back: corrected form + rule). Auto-create on error; user can delete.
+- Each error becomes a flashcard automatically; the user can delete it. `flashcards.kind` is `grammar` or `pronunciation`.
+  - Grammar card: front = the wrong form in context; back = corrected form + rule.
+  - Pronunciation card: front = the word (with ▶ listen); back = tip. Reviewing it offers the same "try again" recording as the panel.
 - SM-2 scheduling (`ease`, `interval`, `repetitions`, `due_at`). Pure function, unit-tested.
 
 ---
@@ -155,7 +177,7 @@ Client → server:
 | type | payload |
 |---|---|
 | `auth` | `token` |
-| `start_of_speech` | `mime` |
+| `start_of_speech` | `mime`, `purpose` (`utterance` \| `pron_retry`), `target_word` (only for `pron_retry`), `message_id` (only for `pron_retry`) |
 | *(binary)* | full utterance audio |
 | `end_of_speech` | — |
 | `user_text` | `text` |
@@ -163,19 +185,22 @@ Client → server:
 | `suggest_topic` | — |
 | `set_theme` | `theme` (free text, ≤40 chars) |
 | `set_level` | `level` (A1…C1) |
-| `regrade` | `message_id`, `text` |
+| `regrade` | `message_id`, `text` (grammar only — no audio) |
+| `set_recast` | `enabled` (bool) — pronunciation recast in Track 1 (§4.1) |
+| `speak_word` | `word` — returns cached TTS audio for the panel's ▶ button |
 
 Server → client:
 | type | payload |
 |---|---|
-| `ready` | `user` (name, langs, level), `session_id` |
+| `ready` | `user` (name, langs, level, voice, `recast_pronunciation`), `session_id` |
 | `transcript` | `message_id`, `text` |
 | `ai_text_delta` | `message_id`, `delta` |
 | `ai_text_done` | `message_id`, `text` |
-| *(binary)* | audio chunk, preceded by `audio_meta` |
+| *(binary)* | audio chunk, preceded by `audio_meta` (for `speak_word`, `message_id` = `word:<word>`) |
 | `audio_meta` | `message_id`, `seq`, `mime` |
 | `tts_fallback` | `message_id`, `text`, `lang` |
-| `grammar` | `message_id`, result per §5 |
+| `feedback` | `message_id`, result per §5 (grammar + pronunciation) |
+| `pron_result` | `message_id`, `word`, `better` (bool), `tip` |
 | `topic` | `message_id`, `text` |
 | `interrupted` | `message_id` |
 | `metrics` | timings per §6 |
@@ -198,7 +223,7 @@ Define these as Pydantic models (backend) and TypeScript types (frontend) genera
 ## 9. UI
 
 Responsive PWA, `h-[100dvh]`, light/dark.
-- **Phone (<768px)**: top bar (direction badge, level pill, quota pill), transcript in the center (48px touch targets: replay audio, 0.8× speed, blur text), bottom dock with mic button (tap = auto-VAD toggle, hold = push-to-talk, `touch-action: none`) and "💡 Puxar assunto / 💡 Podsuń temat", bottom sheet with tabs Gramática/Flashcards and a badge when new errors arrive.
+- **Phone (<768px)**: top bar (direction badge, level pill, quota pill), transcript in the center (48px touch targets: replay audio, 0.8× speed, blur text), bottom dock with mic button (tap = auto-VAD toggle, hold = push-to-talk, `touch-action: none`) and "💡 Puxar assunto / 💡 Podsuń temat", bottom sheet with tabs Correções/Flashcards (UI strings localized: pt-BR and pl-PL) and a badge when new errors arrive. Corrections list shows grammar and pronunciation items, each pronunciation item with ▶ listen and 🎙 try again (§5).
 - **Tablet (768–1024px)**: 60/40 split — conversation | grammar + flashcards.
 - **Desktop (>1024px)**: 3 columns — profile/facts/level/theme | conversation | grammar + metrics HUD.
 - Usage HUD shows: estimated spend this month vs budget, ElevenLabs characters used vs allowance, which TTS provider is active, today's usage vs daily caps, last-turn timings. Values are estimates from configured prices — label them as such.
@@ -232,7 +257,7 @@ Each slice must end runnable and tested. Never start the next slice with the cur
 | 0 | Scaffold, git, docs skeleton, docker-compose (Postgres), CI, health endpoint, empty Vite app | `docker compose up` works; CI green |
 | 1 | Users + token auth, WS protocol (text only), LLM provider abstraction + fallback, memory window + summary, persistence, minimal text chat UI, i18n both locales | Text conversation works locally in both directions; memory invariant tests pass |
 | 2 | Voice: Gemini STT + `stt_eval.py`, sentence buffer, ElevenLabs TTS + fallback chain + cache, usage tracking, audio hooks, VAD/PTT, barge-in, metrics | Voice conversation works on desktop Chrome and on a phone over LAN/HTTPS tunnel; forcing ElevenLabs to fail falls back cleanly (tested) |
-| 3 | Grammar track, editable transcript + regrade, flashcards + SM-2, review UI | Errors show in panel; cards reviewable; SM-2 tests pass |
+| 3 | Feedback track (grammar + pronunciation from audio), pronunciation recast in Track 1 + setting, listen-and-repeat (`speak_word`, `pron_retry`), editable transcript + regrade, flashcards (grammar + pronunciation) + SM-2, review UI | Both kinds of feedback show in panel for both directions; recast can be toggled; cards reviewable; SM-2 and schema-validation tests pass |
 | 4 | Topics JSON (≥150), suggest_topic, theme, user_facts update + edit UI, `precompute_topic_audio.py` | Suggest works with 0 LLM calls and 0 new TTS characters when cached (asserted in test) |
 | 5 | Responsive shell (phone/tablet/desktop), bottom sheet, PWA manifest, quota/metrics HUD, polish | Manual checklist in docs passes on 3 viewport sizes |
 | 6 | Deploy: Vercel + Render + Supabase, docs/DEPLOYMENT.md, USER_ACTIONS.md complete | App reachable over HTTPS; second user can log in |
