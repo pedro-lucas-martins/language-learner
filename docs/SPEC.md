@@ -208,6 +208,7 @@ Server → client:
 | type | payload |
 |---|---|
 | `ready` | `user` (name, langs, level, voice, `recast_pronunciation`), `session_id` |
+| `user_updated` | `user` (same shape as in `ready`) — after `set_level` or other settings changes |
 | `transcript` | `message_id`, `text` |
 | `ai_text_delta` | `message_id`, `delta` |
 | `ai_text_done` | `message_id`, `text` |

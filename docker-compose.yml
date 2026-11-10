@@ -26,9 +26,11 @@ services:
     environment:
       # Inside the compose network the database host is "db", not localhost.
       DATABASE_URL: postgresql+asyncpg://app:app@db:5432/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     volumes:
       - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+      - ./backend/scripts:/app/scripts
     ports:
       - "8000:8000"
     depends_on:

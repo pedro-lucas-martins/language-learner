@@ -32,6 +32,13 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Decision:** three TTS adapters behind one interface (`TTS_PROVIDER` = `google` | `elevenlabs` | `cartesia`), provisional default `google`. `tts_bench.py` (SPEC §6) measures TTFA and saves blind A/B/C audio samples in both languages, using only free tiers. The provider is chosen from those results. edge-tts and the browser voice remain the fallback chain. Supersedes the ElevenLabs-only part of 003.
 - **Consequence:** more adapter code in slice 2; `TTS_MONTHLY_CHARS` generalizes the per-provider allowance. Benchmark results (local and from the deployed region) are recorded below.
 
+## 007 — Slice 1 implementation choices (2026-11-10)
+- **Tokens:** 32 random bytes, stored as SHA-256 (no slow hash needed for full-entropy tokens). Created only by `scripts/create_user.py`; shown once.
+- **Protocol:** added `user_updated` (server → client) so `set_level` has an explicit confirmation. SPEC §7 updated.
+- **LLM fallback:** `GEMINI_CHAT_MODEL` → `GEMINI_UTILITY_MODEL`, one retry each for 429/5xx/timeouts; no retry after text was streamed. Over budget → utility model only.
+- **Speed knob:** optional `GEMINI_THINKING_LEVEL` (empty = model default).
+- **Tests:** SQLite + `FakeLlm` for speed and isolation; CI additionally applies the migrations to Postgres 16 and runs `alembic check`.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |

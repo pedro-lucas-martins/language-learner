@@ -4,7 +4,7 @@ A voice-and-text conversation partner for **Brazilian Portuguese** and **Polish*
 Brazilians learning Polish and Poles learning Portuguese. You talk freely with a friendly AI native speaker
 adapted to your CEFR level, while grammar feedback and flashcards built from your own mistakes appear on the side.
 
-> Status: **slice 0 — scaffold**. See the build plan in [`docs/SPEC.md`](docs/SPEC.md) §11.
+> Status: **slice 1 — text conversation** (login by token, streaming replies from Gemini, memory with running summary). See the build plan in [`docs/SPEC.md`](docs/SPEC.md) §11.
 
 ## Stack
 
@@ -24,8 +24,12 @@ cp .env.example .env          # fill in keys later; slice 0 runs without them
 docker compose up --build
 ```
 
-- Frontend: http://localhost:5173 (shows "Backend OK" when it can reach the API)
+- Create a learner and copy the token it prints:
+  `docker compose exec backend python -m scripts.create_user --name "Pedro" --native pt-BR`
+- Frontend: http://localhost:5173 — paste the token
 - Backend: http://localhost:8000/health
+
+The AI replies need `GEMINI_API_KEY` and the model names in `.env` (see `docs/USER_ACTIONS.md`).
 
 Without Docker:
 
@@ -34,6 +38,8 @@ Without Docker:
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt -r requirements-dev.txt
+alembic upgrade head              # needs DATABASE_URL pointing to a Postgres
+python -m scripts.create_user --name "Pedro" --native pt-BR
 uvicorn app.main:app --reload
 
 # frontend (another terminal)

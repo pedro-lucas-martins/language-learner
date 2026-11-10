@@ -67,6 +67,8 @@ class Settings(BaseSettings):
     gemini_chat_model: str = ""
     gemini_utility_model: str = ""
     gemini_stt_model: str = ""
+    # Optional: MINIMAL | LOW | MEDIUM | HIGH. Empty = model default. Lower = faster replies.
+    gemini_thinking_level: str = ""
 
     # --- TTS (active provider) ---
     tts_provider: TtsProviderName = "google"

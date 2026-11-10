@@ -2,20 +2,26 @@
 
 Tudo o que precisa ser feito à mão (contas, chaves, comandos). Marque conforme for fazendo.
 
-## Agora (fatia 0)
-
-- [ ] Rodar localmente para conferir: `cp .env.example .env` e `docker compose up --build`.
-      Abrir http://localhost:5173 — deve aparecer **"Backend OK (development)"**.
-- [ ] Conferir no GitHub (aba **Actions**) que o CI passou no último commit.
-
-## Antes da fatia 1 (conversa por texto)
+## Fatia 1 — conversar por texto de verdade
 
 - [ ] **Gemini:** criar uma API key no Google AI Studio **com faturamento ativado** (tier pago).
       Colocar em `GEMINI_API_KEY` no `.env`.
-- [ ] **Escolher os modelos** na página de preços do Gemini e preencher `GEMINI_CHAT_MODEL`,
-      `GEMINI_UTILITY_MODEL`, `GEMINI_STT_MODEL` e os `PRICE_*` correspondentes.
+- [ ] **Escolher os modelos** na página de preços do Gemini e preencher `GEMINI_CHAT_MODEL`
+      (conversa) e `GEMINI_UTILITY_MODEL` (resumos; também é o fallback), mais os `PRICE_*`.
+      `GEMINI_STT_MODEL` só é usado a partir da fatia 2.
+      Opcional: `GEMINI_THINKING_LEVEL=MINIMAL` ou `LOW` deixa as respostas mais rápidas
+      (só funciona em modelos que aceitam esse ajuste).
       Anotar a escolha e a data na tabela de `docs/DECISIONS.md`.
 - [ ] **Alerta de orçamento** no Google Cloud Billing (ex.: alerta em US$ 10).
+- [ ] Subir tudo: `cp .env.example .env` (se ainda não fez), preencher o Gemini e rodar
+      `docker compose up --build`. As migrações do banco rodam sozinhas.
+- [ ] **Criar seu usuário** (o token aparece uma vez só — guarde num gerenciador de senhas):
+      ```bash
+      docker compose exec backend python -m scripts.create_user --name "Pedro" --native pt-BR --level A1
+      ```
+      Para alguém aprendendo português: `--native pl-PL`.
+- [ ] Abrir http://localhost:5173, colar o token e conversar.
+- [ ] Conferir no GitHub (aba **Actions**) que o CI passou.
 
 ## Antes da fatia 2 (voz) — contas gratuitas para o benchmark
 

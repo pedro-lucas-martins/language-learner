@@ -8,6 +8,18 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app -d app"
+          --health-interval 5s --health-timeout 3s --health-retries 10
     defaults:
       run:
         working-directory: backend
@@ -24,6 +36,13 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: pytest -q
+      - name: Migrations apply on Postgres and match the models
+        env:
+          DATABASE_URL: postgresql+asyncpg://app:app@localhost:5432/app
+        run: |
+          alembic upgrade head
+          alembic check
+          python -m scripts.create_user --name CI --native pt-BR > /dev/null
 
   frontend:
     runs-on: ubuntu-latest
