@@ -5,12 +5,16 @@ Model names, voice IDs, prices and limits live here and nowhere else.
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # The .env file sits at the repository root (one level above backend/).
 _ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
+
+TtsProviderName = Literal["google", "elevenlabs", "cartesia"]
+LangCode = Literal["pl-PL", "pt-BR"]
 
 
 class Voice(tuple):
@@ -64,12 +68,28 @@ class Settings(BaseSettings):
     gemini_utility_model: str = ""
     gemini_stt_model: str = ""
 
+    # --- TTS (active provider) ---
+    tts_provider: TtsProviderName = "google"
+    # Allowance of the active provider (free tier or plan); fallback kicks in at 95%.
+    tts_monthly_chars: int = Field(default=1_000_000, ge=0)
+
+    # --- Google Cloud Text-to-Speech (Chirp 3 HD) ---
+    # Path to a service-account JSON file (standard Google ADC variable).
+    google_application_credentials: str = ""
+    google_tts_voices_pl: str = ""
+    google_tts_voices_pt: str = ""
+
     # --- ElevenLabs ---
     elevenlabs_api_key: str = ""
     elevenlabs_model: str = ""
     elevenlabs_voices_pl: str = ""
     elevenlabs_voices_pt: str = ""
-    elevenlabs_monthly_chars: int = Field(default=100_000, ge=0)
+
+    # --- Cartesia ---
+    cartesia_api_key: str = ""
+    cartesia_model: str = ""
+    cartesia_voices_pl: str = ""
+    cartesia_voices_pt: str = ""
 
     # --- edge-tts fallback ---
     edge_voices_pl: str = "pl-PL-ZofiaNeural,pl-PL-MarekNeural"
@@ -92,19 +112,33 @@ class Settings(BaseSettings):
     window_turns: int = Field(default=3, ge=1)
     summary_batch_turns: int = Field(default=3, ge=1)
 
-    @field_validator("elevenlabs_voices_pl", "elevenlabs_voices_pt")
+    @field_validator(
+        "google_tts_voices_pl",
+        "google_tts_voices_pt",
+        "elevenlabs_voices_pl",
+        "elevenlabs_voices_pt",
+        "cartesia_voices_pl",
+        "cartesia_voices_pt",
+    )
     @classmethod
     def _validate_voices(cls, value: str) -> str:
         _parse_voice_pairs(value)  # raises on malformed entries
         return value
 
-    @property
-    def voices_pl(self) -> list[Voice]:
-        return _parse_voice_pairs(self.elevenlabs_voices_pl)
+    def tts_voices(self, provider: TtsProviderName, lang: LangCode) -> list[Voice]:
+        """Curated voices for a TTS provider and the language the AI speaks."""
+        suffix = "pl" if lang == "pl-PL" else "pt"
+        prefix = "google_tts" if provider == "google" else provider
+        return _parse_voice_pairs(getattr(self, f"{prefix}_voices_{suffix}"))
 
-    @property
-    def voices_pt(self) -> list[Voice]:
-        return _parse_voice_pairs(self.elevenlabs_voices_pt)
+    def tts_provider_configured(self, provider: TtsProviderName) -> bool:
+        """True when the provider has credentials (used by the app and by tts_bench.py)."""
+        credentials = {
+            "google": self.google_application_credentials,
+            "elevenlabs": self.elevenlabs_api_key,
+            "cartesia": self.cartesia_api_key,
+        }
+        return bool(credentials[provider])
 
     @property
     def edge_voices(self) -> dict[str, list[str]]:

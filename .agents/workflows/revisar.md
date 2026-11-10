@@ -13,7 +13,7 @@ Run this in a NEW agent conversation (not the one that wrote the code), so the r
    - SPEC sections claimed vs actually implemented (missing items, extra scope).
    - Both directions (PT→PL and PL→PT) covered wherever language is involved; both i18n locales filled.
    - External API calls: timeout, 429 handling, typed `error` event or fallback, model names from config.
-   - Cost: every Gemini/ElevenLabs call records `usage_events`; no paid call inside tests; no re-synthesis of text that is cached or already on the client.
+   - Cost: every Gemini/TTS-provider call records `usage_events`; no paid call inside tests; no re-synthesis of text that is cached or already on the client.
    - Security: token check on REST and WS, manual WS Origin check, no secrets in code or logs.
    - Memory invariant (SPEC §4.2) still holds, if touched.
    - Tests: do they test real behavior or just mocks returning what the test expects?

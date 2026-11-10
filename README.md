@@ -13,7 +13,7 @@ adapted to your CEFR level, while grammar feedback and flashcards built from you
 | Frontend | React, Vite, TypeScript, Tailwind CSS — hosted on Vercel |
 | Backend | Python, FastAPI, WebSockets — container on a free PaaS |
 | Database | PostgreSQL (Supabase in production, Docker locally) |
-| AI | Gemini API (conversation, grammar, speech-to-text), ElevenLabs (voices) |
+| AI | Gemini API (conversation, grammar, pronunciation, speech-to-text); voices from Google Cloud TTS (Chirp 3 HD), ElevenLabs or Cartesia — chosen by our own benchmark |
 
 ## Run locally
 

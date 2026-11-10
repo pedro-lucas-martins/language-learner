@@ -27,6 +27,17 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Decision:** no Azure. Gemini receives the learner's audio in both tracks: Track 1 recasts a clearly mispronounced word naturally in its reply (setting, default ON); Track 2 returns explicit pronunciation items with tips, plus a listen-and-repeat drill.
 - **Consequence:** pronunciation feedback is qualitative (no phoneme scores) and can miss or invent issues; mitigated by "report only when sure" prompting and `stt_eval.py` clips with deliberate mispronunciations. Extra cost is small (audio tokens on the chat call). Estimated total for 1 learner × 2 h/day: ~US$ 28–35/month (see the conversation estimate of 2026-11-10; recheck prices before relying on it).
 
+## 006 — TTS provider chosen by our own benchmark (2026-11-10)
+- **Context:** ElevenLabs Creator (~US$ 22/month for 1 learner × 2 h/day) was the cost driver. Google Cloud TTS Chirp 3 HD supports pl-PL and pt-BR with streaming, and its free tier (1M characters/month) covers the expected use, but a third-party benchmark (Coval, measured from us-east-1, language unknown) puts its time-to-first-audio at ~530 ms median vs ~200 ms for ElevenLabs Flash v2.5 and ~280 ms for Cartesia Sonic 3.6. No public data covers Polish/Portuguese or our backend region.
+- **Decision:** three TTS adapters behind one interface (`TTS_PROVIDER` = `google` | `elevenlabs` | `cartesia`), provisional default `google`. `tts_bench.py` (SPEC §6) measures TTFA and saves blind A/B/C audio samples in both languages, using only free tiers. The provider is chosen from those results. edge-tts and the browser voice remain the fallback chain. Supersedes the ElevenLabs-only part of 003.
+- **Consequence:** more adapter code in slice 2; `TTS_MONTHLY_CHARS` generalizes the per-provider allowance. Benchmark results (local and from the deployed region) are recorded below.
+
+## TTS benchmark results
+
+| Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |
+|---|---|---|---|---|---|---|
+| | | | | | | |
+
 ## Provider choices (fill in when keys are created)
 
 | Setting | Value | Price checked | Date |
@@ -34,5 +45,5 @@ Short records: context → decision → consequence. Newest at the bottom.
 | `GEMINI_CHAT_MODEL` | | | |
 | `GEMINI_UTILITY_MODEL` | | | |
 | `GEMINI_STT_MODEL` | | | |
-| `ELEVENLABS_MODEL` | | | |
-| ElevenLabs plan | | | |
+| `TTS_PROVIDER` (after benchmark) | | | |
+| TTS model / plan | | | |

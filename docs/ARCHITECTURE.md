@@ -15,7 +15,7 @@ frontend (Vite/React, :5173)  ──HTTP──▶  backend (FastAPI, :8000)  ─
 | File | Purpose |
 |---|---|
 | `app/main.py` | FastAPI app, REST CORS from the origin allowlist, `GET /health` |
-| `app/config.py` | All settings from env (`.env` at repo root). Model names, voice IDs, prices, caps |
+| `app/config.py` | All settings from env (`.env` at repo root). Model names, TTS provider and per-provider voice lists, prices, caps |
 | `app/security.py` | `is_allowed_origin()` — shared by REST CORS and (from slice 1) the manual WebSocket Origin check |
 | `tests/` | pytest: health, CORS, origin allowlist, voice-list parsing |
 
@@ -37,4 +37,4 @@ plus `VERCEL_PREVIEW_REGEX` (the project's own preview deployments, never `*.ver
 
 ## Not built yet
 
-Database models, auth, WebSocket, Gemini, ElevenLabs, grammar, topics, flashcards, responsive UI. See SPEC §11.
+Database models, auth, WebSocket, Gemini, TTS providers, grammar, topics, flashcards, responsive UI. See SPEC §11.

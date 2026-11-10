@@ -23,8 +23,14 @@ dist/
 .vite/
 .vercel/
 
-# Audio test clips (personal recordings, never commit)
+# Audio test clips (personal recordings, never commit) and benchmark output
 backend/scripts/stt_clips/
+bench_results/
+
+# Cloud credentials
+*service-account*.json
+gcp-*.json
+credentials/
 
 # OS / editors
 .DS_Store

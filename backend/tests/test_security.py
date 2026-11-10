@@ -59,6 +59,29 @@ def test_malformed_voice_list_is_rejected() -> None:
         make_settings(elevenlabs_voices_pl=":no-id")
 
 
-def test_voice_pairs_are_parsed() -> None:
-    settings = make_settings(elevenlabs_voices_pt="abc:Ana, def:Bruno")
-    assert [(v.id, v.label) for v in settings.voices_pt] == [("abc", "Ana"), ("def", "Bruno")]
+def test_voice_pairs_are_parsed_per_provider_and_language() -> None:
+    settings = make_settings(
+        elevenlabs_voices_pt="abc:Ana, def:Bruno",
+        google_tts_voices_pl="pl-PL-Chirp3-HD-Kore:Kasia",
+        cartesia_voices_pl="uuid-1",
+    )
+    assert [(v.id, v.label) for v in settings.tts_voices("elevenlabs", "pt-BR")] == [
+        ("abc", "Ana"),
+        ("def", "Bruno"),
+    ]
+    assert [v.id for v in settings.tts_voices("google", "pl-PL")] == ["pl-PL-Chirp3-HD-Kore"]
+    # A voice without a label uses its id as the label.
+    assert settings.tts_voices("cartesia", "pl-PL")[0].label == "uuid-1"
+    assert settings.tts_voices("cartesia", "pt-BR") == []
+
+
+def test_tts_provider_configured_checks_credentials() -> None:
+    settings = make_settings(elevenlabs_api_key="key")
+    assert settings.tts_provider_configured("elevenlabs")
+    assert not settings.tts_provider_configured("google")
+    assert not settings.tts_provider_configured("cartesia")
+
+
+def test_unknown_tts_provider_is_rejected() -> None:
+    with pytest.raises(ValueError):
+        make_settings(tts_provider="polly")

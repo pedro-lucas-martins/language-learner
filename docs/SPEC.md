@@ -25,10 +25,10 @@ Core experience: **free talk** with a friendly native-speaker AI, adapted to the
 - **Flashcards (SM-2)** generated from the learner's own mistakes.
 
 ### Hard constraint: small, predictable monthly cost
-Paid services allowed: **Google Gemini API (paid tier)** and **ElevenLabs (subscription plan)**. Everything else (hosting, DB, CI) stays on free tiers.
-- Monthly budget is configurable (`MONTHLY_BUDGET_USD`, default 15). The backend tracks actual usage (Gemini tokens by type, ElevenLabs characters) in Postgres and estimates spend using unit prices from config (`PRICE_*` env vars, never hardcoded).
+Paid services allowed: **Google Gemini API (paid tier)** and **one TTS provider** chosen by benchmark (§6): **Google Cloud Text-to-Speech (Chirp 3 HD)**, **ElevenLabs** or **Cartesia**. Everything else (hosting, DB, CI) stays on free tiers.
+- Monthly budget is configurable (`MONTHLY_BUDGET_USD`, default 15). The backend tracks actual usage (Gemini tokens by type, TTS characters by provider) in Postgres and estimates spend using unit prices from config (`PRICE_*` env vars, never hardcoded).
 - Per-user daily caps (LLM calls, STT audio seconds, TTS characters), configurable in `config.py`.
-- When the ElevenLabs monthly character allowance (`ELEVENLABS_MONTHLY_CHARS`) reaches 95%, TTS switches automatically to the free fallback chain (§6) and the UI shows it. When the monthly USD budget is reached, the LLM switches to the cheapest configured model and the UI warns.
+- When the active TTS provider's monthly character allowance (`TTS_MONTHLY_CHARS`, e.g. the free tier or the plan's included characters) reaches 95%, TTS switches automatically to the free fallback chain (§6) and the UI shows it. This prevents overage charges. When the monthly USD budget is reached, the LLM switches to the cheapest configured model and the UI warns.
 - Every external call must handle HTTP 429 / quota / 5xx errors gracefully (one retry with backoff, then a typed `error` event or fallback). Never crash the WebSocket.
 - No other paid service may be added without the user's explicit approval.
 
@@ -44,7 +44,7 @@ Paid services allowed: **Google Gemini API (paid tier)** and **ElevenLabs (subsc
 | Session state | In-process memory per WebSocket + persisted to Postgres | **No Redis.** Single backend instance is assumed |
 | LLM | Gemini API, paid tier (`google-genai` SDK) | Two roles with separate env vars: `GEMINI_CHAT_MODEL` (conversation — stronger Flash-tier) and `GEMINI_UTILITY_MODEL` (grammar + pronunciation JSON, summaries, user_facts, STT — Flash-Lite tier). Both receive audio on voice turns (§4.1, §5) |
 | STT | Gemini audio understanding (`GEMINI_STT_MODEL`) | Single provider. Keep it in its own `stt_service.py` so it stays isolated from the chat logic |
-| TTS | ElevenLabs streaming TTS (`ELEVENLABS_MODEL`, default a low-latency Flash model), behind a `TtsProvider` interface | Fallback chain: ElevenLabs → `edge-tts` → browser `speechSynthesis`. See §6 |
+| TTS | Selectable by env `TTS_PROVIDER` = `google` \| `elevenlabs` \| `cartesia`, each behind the same `TtsProvider` interface. Provisional default: `google` (Chirp 3 HD — its free tier of 1M characters/month covers the expected use). The final choice is made with `tts_bench.py` (§6) | Fallback chain: active provider → `edge-tts` → browser `speechSynthesis`. See §6 |
 
 Model names, voice IDs and prices come ONLY from env/config, never hardcoded. Before choosing defaults, check the providers' current docs and pricing pages; record chosen names, prices and the date checked in `docs/DECISIONS.md`.
 The Gemini paid tier is required (not free tier) because free-tier content may be used by Google to improve its products, and these conversations contain personal information.
@@ -158,11 +158,26 @@ mic → (client VAD / push-to-talk) → audio blob over WS → STT → LLM strea
 - `getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}})`.
 - **While AI audio is playing, auto-VAD is paused** (prevents the app hearing itself on phone speakers). Push-to-talk still works and triggers barge-in.
 - Sentence buffer: flush on `. ! ? …` or `\n` when buffer ≥15 chars; do not split on decimals (`3.5`), common abbreviations, or ordinal dots in Polish dates (`11.11.`). Unit-tested with both languages.
-- TTS primary: ElevenLabs streaming endpoint, one request per buffered sentence, output format `mp3_44100_64` (or the lowest-latency mp3 format available), `language_code` set to the AI's language. Stream the returned audio chunks to the client as they arrive. Record in `docs/DECISIONS.md` that input-streaming over the ElevenLabs WebSocket (feeding LLM tokens directly) is a possible later optimization, not part of v1.
-- Voices: a curated list in config, ≥2 voices per AI language (`ELEVENLABS_VOICES_PL`, `ELEVENLABS_VOICES_PT`, as `id:label` pairs). The user picks one in settings; stored on `users.voice_id`.
-- TTS cache: table `tts_cache (hash, voice_id, model, mime, audio bytea, bytes, last_used_at)`, key = sha256(text + voice + model). Used for topic icebreakers and any repeated text. Capped by `TTS_CACHE_MAX_MB` with LRU eviction. Message replay on the client uses the audio it already received (keep blobs per message in memory) — never re-synthesize for replay or 0.8× speed (use `playbackRate`).
+- **TTS providers** (`TtsProvider` interface: `synthesize_stream(text, lang, voice_id, speaking_rate) -> async iterator of audio chunks`, plus `name`, `voices(lang)`):
+  - `google` — Google Cloud Text-to-Speech, Chirp 3 HD voices, **streaming synthesis** (gRPC `StreamingSynthesize`), auth via service account (`GOOGLE_APPLICATION_CREDENTIALS`). Supports native `speaking_rate` (used for the 0.8× "slow" listen in §5).
+  - `elevenlabs` — streaming endpoint, low-latency Flash model (`ELEVENLABS_MODEL`), `language_code` set to the AI's language.
+  - `cartesia` — Sonic model (`CARTESIA_MODEL`), streaming over its WebSocket or SSE API, language set explicitly.
+  - Every adapter: one request per buffered sentence, mp3 (or the lowest-latency compressed format the provider offers; record it in `audio_meta.mime`), chunks forwarded to the client as they arrive, 3 s timeout to first byte, `usage_events` row per request.
+  - Input-streaming (feeding LLM tokens straight into a provider WebSocket) is a possible later optimization, not part of v1 — record this in `docs/DECISIONS.md`.
+- Voices: a curated list per provider and language in config (`GOOGLE_TTS_VOICES_PL/PT`, `ELEVENLABS_VOICES_PL/PT`, `CARTESIA_VOICES_PL/PT`, as `id:label` pairs, ≥2 per language). The user picks one in settings; stored on `users.voice_id`. If the stored id is not in the active provider's list for that language, use the first voice of the list.
+- TTS cache: table `tts_cache (hash, provider, voice_id, model, mime, audio bytea, bytes, last_used_at)`, key = sha256(provider + voice + model + rate + text). Used for topic icebreakers, words in the pronunciation panel and any repeated text. Capped by `TTS_CACHE_MAX_MB` with LRU eviction. Message replay on the client uses the audio it already received (keep blobs per message in memory) — never re-synthesize for replay; replay at 0.8× uses `playbackRate`.
 - `backend/scripts/precompute_topic_audio.py` synthesizes all topics for the default voices into the cache (run once by the user; prints the character count and estimated cost before asking for confirmation).
-- Fallback chain: if ElevenLabs fails, times out (3 s to first byte), or the monthly allowance is at 95% → edge-tts voices from config (`pl-PL-ZofiaNeural`, `pl-PL-MarekNeural`, `pt-BR-FranciscaNeural`, `pt-BR-AntonioNeural`) → if that also fails, send `{"type":"tts_fallback","text":...}` and the client speaks it with `speechSynthesis`.
+- Fallback chain: if the active provider fails, times out, or `TTS_MONTHLY_CHARS` is at 95% → edge-tts voices from config (`pl-PL-ZofiaNeural`, `pl-PL-MarekNeural`, `pt-BR-FranciscaNeural`, `pt-BR-AntonioNeural`) → if that also fails, send `{"type":"tts_fallback","text":...}` and the client speaks it with `speechSynthesis`.
+
+### TTS benchmark (`backend/scripts/tts_bench.py`)
+Purpose: choose the TTS provider with our own data, using only free tiers.
+- Corpus `backend/scripts/tts_bench_corpus.json`: 20 sentences in pl-PL and 20 in pt-BR, shaped like real Track 1 replies (1–2 sentences + a question, 60–180 chars, A1 to C1), plus 10 single words from the pronunciation focus lists (§5).
+- For each configured provider (skips any without credentials), each language and one voice per language: synthesize every item in streaming mode, `RUNS` times (default 3), with one warm-up request first (connection reuse like in production).
+- Measure per request: time to first audio byte (TTFA), total synthesis time, audio duration, characters.
+- Report (stdout + `bench_results/<timestamp>/report.md` + `results.csv`): median and P90 TTFA, median total time, per provider × language; characters consumed per provider (to check it stays inside the free tier before running — print the planned total and ask for confirmation).
+- Save one audio file per item per provider (`bench_results/<timestamp>/audio/<provider>/<lang>/<id>.mp3`) and an `index.html` that plays the same sentence from each provider side by side, so the user can judge naturalness and pronunciation by ear. Provider names are hidden behind letters (A/B/C) by default, with the mapping at the bottom, for a blind comparison.
+- Run it twice: locally (Brazil) and from the deployed backend region (slice 6), because latency depends on where the backend runs. Results go to `docs/DECISIONS.md`.
+- `bench_results/` is git-ignored.
 - Barge-in: `{"type":"user_started_speaking"}` cancels the LLM task and TTS tasks for the current turn; server replies `{"type":"interrupted"}`; client clears its audio queue.
 - **Latency is measured, not promised**: record per-turn timings (stt_ms, llm_first_token_ms, first_audio_ms, total_ms) and send them in a `metrics` event. No hard latency target in code or docs; report observed medians.
 - `unlockAudioContext()` on first user tap (iOS/Android autoplay rules). Audio elements use `playsInline`.
@@ -226,7 +241,7 @@ Responsive PWA, `h-[100dvh]`, light/dark.
 - **Phone (<768px)**: top bar (direction badge, level pill, quota pill), transcript in the center (48px touch targets: replay audio, 0.8× speed, blur text), bottom dock with mic button (tap = auto-VAD toggle, hold = push-to-talk, `touch-action: none`) and "💡 Puxar assunto / 💡 Podsuń temat", bottom sheet with tabs Correções/Flashcards (UI strings localized: pt-BR and pl-PL) and a badge when new errors arrive. Corrections list shows grammar and pronunciation items, each pronunciation item with ▶ listen and 🎙 try again (§5).
 - **Tablet (768–1024px)**: 60/40 split — conversation | grammar + flashcards.
 - **Desktop (>1024px)**: 3 columns — profile/facts/level/theme | conversation | grammar + metrics HUD.
-- Usage HUD shows: estimated spend this month vs budget, ElevenLabs characters used vs allowance, which TTS provider is active, today's usage vs daily caps, last-turn timings. Values are estimates from configured prices — label them as such.
+- Usage HUD shows: estimated spend this month vs budget, TTS characters used vs allowance (active provider), which TTS provider is active, today's usage vs daily caps, last-turn timings. Values are estimates from configured prices — label them as such.
 - `manifest.json` + icons. Service worker not required.
 
 ---
@@ -256,7 +271,7 @@ Each slice must end runnable and tested. Never start the next slice with the cur
 |---|---|---|
 | 0 | Scaffold, git, docs skeleton, docker-compose (Postgres), CI, health endpoint, empty Vite app | `docker compose up` works; CI green |
 | 1 | Users + token auth, WS protocol (text only), LLM provider abstraction + fallback, memory window + summary, persistence, minimal text chat UI, i18n both locales | Text conversation works locally in both directions; memory invariant tests pass |
-| 2 | Voice: Gemini STT + `stt_eval.py`, sentence buffer, ElevenLabs TTS + fallback chain + cache, usage tracking, audio hooks, VAD/PTT, barge-in, metrics | Voice conversation works on desktop Chrome and on a phone over LAN/HTTPS tunnel; forcing ElevenLabs to fail falls back cleanly (tested) |
+| 2 | Voice: Gemini STT + `stt_eval.py`, sentence buffer, TTS adapters (Google Chirp 3 HD, ElevenLabs, Cartesia) + `tts_bench.py` + fallback chain + cache, usage tracking, audio hooks, VAD/PTT, barge-in, metrics | Voice conversation works on desktop Chrome and on a phone over LAN/HTTPS tunnel; each provider can be selected by env; forcing the active provider to fail falls back cleanly (tested); benchmark report produced |
 | 3 | Feedback track (grammar + pronunciation from audio), pronunciation recast in Track 1 + setting, listen-and-repeat (`speak_word`, `pron_retry`), editable transcript + regrade, flashcards (grammar + pronunciation) + SM-2, review UI | Both kinds of feedback show in panel for both directions; recast can be toggled; cards reviewable; SM-2 and schema-validation tests pass |
 | 4 | Topics JSON (≥150), suggest_topic, theme, user_facts update + edit UI, `precompute_topic_audio.py` | Suggest works with 0 LLM calls and 0 new TTS characters when cached (asserted in test) |
 | 5 | Responsive shell (phone/tablet/desktop), bottom sheet, PWA manifest, quota/metrics HUD, polish | Manual checklist in docs passes on 3 viewport sizes |
