@@ -22,6 +22,7 @@ export default defineConfig(({ mode }) => {
         ? {
             "/ws": { target: backend.replace(/^http/, "ws"), ws: true },
             "/me": { target: backend },
+            "/flashcards": { target: backend },
             "/health": { target: backend },
           }
         : undefined,

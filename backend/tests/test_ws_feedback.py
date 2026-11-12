@@ -17,7 +17,7 @@ from app.models import Message, UsageEvent, User
 from app.services import feedback as feedback_mod
 from app.services import stt_service
 from app.services.llm import FakeLlm
-from tests.conftest import ORIGIN, add_user, make_settings
+from tests.conftest import ORIGIN, add_user, make_settings, wait_sessions_closed
 
 ANALYSIS = json.dumps(
     {
@@ -42,6 +42,7 @@ def fb_client(
     app.state.llm = fake_llm
     with TestClient(app) as client:
         yield client
+        wait_sessions_closed(sync_engine)
     app.state.settings = original
     app.state.llm = None
 

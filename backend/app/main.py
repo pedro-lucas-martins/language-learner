@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import database
 from app.config import get_settings
-from app.routers import me, ws_chat
+from app.routers import flashcards, me, ws_chat
 from app.services.llm import GeminiProvider
 from app.services.tts.cache import DbTtsCache
 from app.services.tts.chain import TtsChain, build_active_provider
@@ -53,6 +53,7 @@ app.add_middleware(
 )
 
 app.include_router(me.router)
+app.include_router(flashcards.router)
 app.include_router(ws_chat.router)
 
 

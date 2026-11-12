@@ -8,7 +8,12 @@ testpaths = ["tests"]
 pythonpath = ["."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
-filterwarnings = ["ignore::SyntaxWarning", "ignore::DeprecationWarning:starlette.*"]
+filterwarnings = [
+    "ignore::SyntaxWarning",
+    "ignore::DeprecationWarning:starlette.*",
+    # A thread hitting a closed event loop means a DB call outlived its test.
+    "error::pytest.PytestUnhandledThreadExceptionWarning",
+]
 
 [tool.ruff]
 line-length = 100

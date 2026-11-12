@@ -49,6 +49,11 @@ class SetRecastMsg(_Msg):
     enabled: bool
 
 
+class SpeakWordMsg(_Msg):
+    type: Literal["speak_word"]
+    word: str = Field(min_length=1, max_length=80)
+
+
 class StartOfSpeechMsg(_Msg):
     type: Literal["start_of_speech"]
     mime: str = Field(min_length=1, max_length=MAX_MIME)
@@ -71,6 +76,7 @@ ClientMsg = Annotated[
     | SetLevelMsg
     | RegradeMsg
     | SetRecastMsg
+    | SpeakWordMsg
     | StartOfSpeechMsg
     | EndOfSpeechMsg
     | UserStartedSpeakingMsg,
@@ -186,6 +192,14 @@ class FeedbackMsg(BaseModel):
     pron: list[PronIssue]
 
 
+class PronResultMsg(BaseModel):
+    type: Literal["pron_result"] = "pron_result"
+    message_id: str
+    word: str
+    better: bool
+    tip: str
+
+
 class ErrorMsg(BaseModel):
     type: Literal["error"] = "error"
     code: ErrorCode
@@ -203,6 +217,7 @@ ServerMsg = (
     | InterruptedMsg
     | MetricsMsg
     | FeedbackMsg
+    | PronResultMsg
     | UsageMsg
     | ErrorMsg
 )

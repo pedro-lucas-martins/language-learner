@@ -17,7 +17,7 @@ from app.main import app
 from app.models import ChatSession, Message, User
 from app.services import llm as llm_mod
 from app.services.llm import FakeLlm
-from tests.conftest import ORIGIN, add_user, make_settings
+from tests.conftest import ORIGIN, add_user, make_settings, wait_sessions_closed
 
 
 def _session_ended(engine: Engine) -> bool:
@@ -205,10 +205,12 @@ def test_daily_cap_blocks_llm_calls(sync_engine: Engine, fake_llm: FakeLlm) -> N
     app.state.llm = fake_llm
     token = add_user(sync_engine)
     try:
-        with TestClient(app) as client, _connect(client) as ws:
-            _login(ws, token)
-            first = _say(ws, "jeden")
-            second = _say(ws, "dwa")
+        with TestClient(app) as client:
+            with _connect(client) as ws:
+                _login(ws, token)
+                first = _say(ws, "jeden")
+                second = _say(ws, "dwa")
+            wait_sessions_closed(sync_engine)
     finally:
         app.state.llm = None
         app.state.settings = original
@@ -245,9 +247,11 @@ def test_missing_models_report_not_configured(sync_engine: Engine, fake_llm: Fak
     app.state.llm = fake_llm
     token = add_user(sync_engine)
     try:
-        with TestClient(app) as client, _connect(client) as ws:
-            _login(ws, token)
-            events = _say(ws, "Oi")
+        with TestClient(app) as client:
+            with _connect(client) as ws:
+                _login(ws, token)
+                events = _say(ws, "Oi")
+            wait_sessions_closed(sync_engine)
     finally:
         app.state.llm = None
         app.state.settings = original

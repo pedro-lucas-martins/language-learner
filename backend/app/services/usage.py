@@ -86,6 +86,14 @@ async def record_stt(
     await db.commit()
 
 
+async def record_audio_seconds(
+    db: AsyncSession, *, user_id: uuid.UUID | None, role: str, model: str, seconds: float
+) -> None:
+    """Audio sent to Gemini outside STT (e.g. pron_retry); counts toward the daily STT cap."""
+    db.add(UsageEvent(user_id=user_id, kind="stt_audio_s", role=role, model=model, amount=seconds))
+    await db.commit()
+
+
 async def stt_seconds_today(
     db: AsyncSession, user_id: uuid.UUID, now: datetime | None = None
 ) -> float:

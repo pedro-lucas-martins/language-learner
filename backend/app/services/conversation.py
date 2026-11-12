@@ -32,6 +32,7 @@ from app.protocol import (
     FeedbackMsg,
     InterruptedMsg,
     MetricsMsg,
+    PronResultMsg,
     TranscriptMsg,
     TtsFallbackMsg,
     UsageMsg,
@@ -39,6 +40,7 @@ from app.protocol import (
     UserUpdatedMsg,
 )
 from app.services import feedback as feedback_svc
+from app.services import flashcards as flashcards_svc
 from app.services import usage as usage_svc
 from app.services.llm import (
     AudioInput,
@@ -58,7 +60,13 @@ from app.services.prompts import (
     truncate_words,
 )
 from app.services.sentence_buffer import SentenceBuffer
-from app.services.stt_service import SttError, estimate_seconds, gemini_mime, transcribe
+from app.services.stt_service import (
+    AUDIO_TOKENS_PER_SECOND,
+    SttError,
+    estimate_seconds,
+    gemini_mime,
+    transcribe,
+)
 from app.services.tts.chain import TtsChain, TtsChunk, TtsUnavailable
 
 log = logging.getLogger(__name__)
@@ -459,48 +467,68 @@ class Conversation:
         *,
         over: bool,
     ) -> None:
-        """Synthesize sentences in order. Each binary frame follows one audio_meta."""
-        assert self.tts is not None
-        lang = self.learner.target_lang
+        """Synthesize the reply's sentences in order."""
         index = 0
         seq = 0
         while (sentence := await sentences.get()) is not None:
-            held: TtsChunk | None = None
+            seq = await self._speak_sentence(
+                str(ai_msg_id), index, sentence, seq, over=over, timings=timings
+            )
+            index += 1
+
+    async def _speak_sentence(
+        self,
+        message_id: str,
+        index: int,
+        text: str,
+        seq: int,
+        *,
+        over: bool,
+        timings: Timings | None = None,
+        speaking_rate: float = 1.0,
+    ) -> int:
+        """Send one sentence as audio_meta + binary frames (or tts_fallback). Returns next seq.
+
+        One chunk is held back so the last chunk of the sentence can carry final=true.
+        """
+        lang = self.learner.target_lang
+        held: TtsChunk | None = None
+        if self.tts is not None:
             try:
                 async for chunk in self.tts.stream(
-                    sentence,
-                    lang,
-                    self.learner.voice_id,  # type: ignore[arg-type]
+                    text,
+                    lang,  # type: ignore[arg-type]
+                    self.learner.voice_id,
+                    speaking_rate,
                     record=self._record_tts,
                     over_allowance=over,
                 ):
-                    if timings.first_audio_ms is None:
+                    if timings is not None and timings.first_audio_ms is None:
                         timings.first_audio_ms = _ms(timings.started)
                     if held is not None:
-                        await self._send_chunk(ai_msg_id, seq, index, held, final=False)
+                        await self._send_chunk(message_id, seq, index, held, final=False)
                         seq += 1
-                    held = chunk  # keep one back so the last chunk can carry final=true
+                    held = chunk
             except TtsUnavailable:
                 held = None
-            if held is not None:
-                await self._send_chunk(ai_msg_id, seq, index, held, final=True)
-                seq += 1
-            else:
-                await self.send(
-                    TtsFallbackMsg(
-                        message_id=str(ai_msg_id),
-                        sentence=index,
-                        text=sentence,
-                        lang=lang,  # type: ignore[arg-type]
-                    )
-                )
-            index += 1
+        if held is not None:
+            await self._send_chunk(message_id, seq, index, held, final=True)
+            return seq + 1
+        await self.send(
+            TtsFallbackMsg(
+                message_id=message_id,
+                sentence=index,
+                text=text,
+                lang=lang,  # type: ignore[arg-type]
+            )
+        )
+        return seq
 
     async def _send_chunk(
-        self, ai_msg_id: uuid.UUID, seq: int, sentence: int, chunk: TtsChunk, *, final: bool
+        self, message_id: str, seq: int, sentence: int, chunk: TtsChunk, *, final: bool
     ) -> None:
         meta = AudioMetaMsg(
-            message_id=str(ai_msg_id), seq=seq, sentence=sentence, mime=chunk.mime, final=final
+            message_id=message_id, seq=seq, sentence=sentence, mime=chunk.mime, final=final
         )
         await self.send_audio(meta, chunk.data)
 
@@ -563,6 +591,69 @@ class Conversation:
             return None
         return reply
 
+    # --- listen and repeat (SPEC §5) ------------------------------------------------------
+
+    def speak_word(self, word: str) -> None:
+        """▶ in the panel: the word in the learner's voice, from the TTS cache when possible."""
+        self._spawn(self._speak_word(word.strip()))
+
+    async def _speak_word(self, word: str) -> None:
+        if not word:
+            await self._error("bad_request")
+            return
+        snap = await self._snapshot()
+        await self._speak_sentence(f"word:{word}", 0, word, 0, over=snap.tts_over_allowance)
+
+    def pron_retry(self, audio: bytes, mime: str, word: str, message_id: str) -> None:
+        """🎙 in the panel: judge one new attempt at one word."""
+        self._spawn(self._pron_retry(audio, mime, word.strip(), message_id))
+
+    async def _pron_retry(self, audio: bytes, mime: str, word: str, message_id: str) -> None:
+        snap = await self._snapshot()
+        if snap.daily_cap_reached or snap.stt_cap_reached(estimate_seconds(len(audio), mime)):
+            await self._error("quota_exceeded")
+            return
+        judged = await feedback_svc.judge_retry(
+            self.llm,
+            self.settings,
+            word=word,
+            audio=AudioInput(data=audio, mime=gemini_mime(mime)),
+            target_lang=self.learner.target_lang,
+            native_lang=self.learner.native_lang,
+            budget_exceeded=snap.budget_exceeded,
+            record=self._record_llm,
+        )
+        if judged is None:
+            await self._error("stt_failed")
+            return
+        result, used, model = judged
+        seconds = (
+            used.audio_tokens / AUDIO_TOKENS_PER_SECOND
+            if used.audio_tokens
+            else estimate_seconds(len(audio), mime)
+        )
+        async with session_factory()() as db:
+            await usage_svc.record_audio_seconds(
+                db, user_id=self.learner.id, role="feedback", model=model, seconds=round(seconds, 2)
+            )
+        await self.send(
+            PronResultMsg(message_id=message_id, word=word, better=result.better, tip=result.tip)
+        )
+
+    def _spawn(self, coro: Coroutine[Any, Any, None]) -> None:
+        """Side work that must not block the socket or be cancelled by barge-in."""
+        task = asyncio.create_task(self._quiet(coro))
+        self._background.add(task)
+        task.add_done_callback(self._background.discard)
+
+    async def _quiet(self, coro: Coroutine[Any, Any, None]) -> None:
+        try:
+            await coro
+        except Exception:  # noqa: BLE001 — never break the conversation
+            log.exception("Background task failed")
+            with contextlib.suppress(Exception):
+                await self._error("provider_unavailable")
+
     # --- Track 2: feedback (SPEC §5) ------------------------------------------------------
 
     def _spawn_feedback(
@@ -604,7 +695,17 @@ class Conversation:
                 msg = await db.get(Message, message_id)
                 if msg is not None:
                     msg.feedback = result.as_json()
-                    await db.commit()
+                await db.commit()  # always end the transaction (SQLite holds locks otherwise)
+                if not result.ok:
+                    await flashcards_svc.add_from_feedback(
+                        db,
+                        user_id=self.learner.id,
+                        lang=self.learner.target_lang,
+                        message_id=message_id,
+                        message=text,
+                        errs=result.errs,
+                        pron=result.pron,
+                    )
             await self.send(
                 FeedbackMsg(
                     message_id=str(message_id),

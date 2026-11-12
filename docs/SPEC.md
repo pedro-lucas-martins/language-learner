@@ -142,7 +142,9 @@ LLM-based speech-to-text (like Gemini) tends to "fix" learners' grammar, hiding 
 - Each error becomes a flashcard automatically; the user can delete it. `flashcards.kind` is `grammar` or `pronunciation`.
   - Grammar card: front = the wrong form in context; back = corrected form + rule.
   - Pronunciation card: front = the word (with ▶ listen); back = tip. Reviewing it offers the same "try again" recording as the panel.
-- SM-2 scheduling (`ease`, `interval`, `repetitions`, `due_at`). Pure function, unit-tested.
+- SM-2 scheduling (`ease`, `interval`, `repetitions`, `due_at`). Pure function, unit-tested. A failed review (grade < 3) brings the card back after 10 minutes, not the next day.
+- Table `flashcards (id, user_id, kind, front, back, word, lang, source_message_id, ease, interval_days, repetitions, due_at, created_at)`, unique per `(user_id, kind, front)`. A grammar card's front is the message with the wrong part marked «like this».
+- REST (Bearer token, §3): `GET /flashcards?due=true|false&limit=`, `POST /flashcards/{id}/review` `{grade: 0–5}`, `DELETE /flashcards/{id}`. A learner only sees and changes their own cards.
 
 ---
 

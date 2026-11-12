@@ -85,6 +85,29 @@ def fake_tts() -> Iterator[TtsChain]:
     app.state.tts = None
 
 
+def wait_sessions_closed(engine: Engine, timeout: float = 5.0) -> None:
+    """Let the server finish closing every chat session before the test client stops.
+
+    The close runs after the client disconnects (it writes to SQLite). If the TestClient
+    shut its event loop first, aiosqlite's worker thread would hit a closed loop.
+    """
+    import time
+
+    from sqlalchemy import func, select
+
+    from app.models import ChatSession
+
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        with Session(engine) as db:
+            open_sessions = db.scalar(
+                select(func.count(ChatSession.id)).where(ChatSession.ended_at.is_(None))
+            )
+        if not open_sessions:
+            return
+        time.sleep(0.01)
+
+
 @pytest.fixture
 def fake_llm() -> FakeLlm:
     return FakeLlm()
@@ -102,5 +125,6 @@ def client(sync_engine: Engine, settings: Settings, fake_llm: FakeLlm) -> Iterat
     app.state.llm = fake_llm
     with TestClient(app) as test_client:
         yield test_client
+        wait_sessions_closed(sync_engine)
     app.state.settings = original_settings
     app.state.llm = None

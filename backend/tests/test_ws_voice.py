@@ -17,7 +17,7 @@ from app.models import Message, UsageEvent
 from app.services import stt_service
 from app.services.llm import FakeLlm
 from app.services.tts.chain import TtsChain
-from tests.conftest import ORIGIN, add_user, make_settings
+from tests.conftest import ORIGIN, add_user, make_settings, wait_sessions_closed
 from tests.fakes_tts import FakeTts, MemoryCache
 
 REPLY = "Cześć Pedro, miło cię poznać! Co dzisiaj robisz po pracy?"
@@ -35,6 +35,7 @@ def voice_client(
     app.state.llm = fake_llm
     with TestClient(app) as client:
         yield client
+        wait_sessions_closed(sync_engine)
     app.state.settings = original
     app.state.llm = None
 

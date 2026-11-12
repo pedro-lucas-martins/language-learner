@@ -52,6 +52,8 @@ export interface ChatState {
   metrics: Metrics | null;
   /** Feedback by learner message id; a regrade replaces the entry. */
   feedback: Record<string, Feedback>;
+  /** Last pron_retry verdict per "messageId|word". */
+  pronResults: Record<string, { better: boolean; tip: string }>;
 }
 
 export type ChatAction =
@@ -71,6 +73,7 @@ export const initialChatState: ChatState = {
   usage: null,
   metrics: null,
   feedback: {},
+  pronResults: {},
 };
 
 function finishStreaming(messages: ChatMessage[]): ChatMessage[] {
@@ -186,6 +189,15 @@ function applyServerMsg(state: ChatState, msg: ServerMsg): ChatState {
         feedback: {
           ...state.feedback,
           [msg.message_id]: { source: msg.source, ok: msg.ok, errs: msg.errs, pron: msg.pron },
+        },
+      };
+
+    case "pron_result":
+      return {
+        ...state,
+        pronResults: {
+          ...state.pronResults,
+          [`${msg.message_id}|${msg.word}`]: { better: msg.better, tip: msg.tip },
         },
       };
 

@@ -89,6 +89,14 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Real check (2026-11-12, synthetic clips):** grammar correct in both directions (PT→PL: dwa koty, jeden pies, do sklepu — explained in Portuguese; PL→PT: gosto, da praia, fui — explained in Polish). **Pronunciation is unreliable**: on a native TTS voice the model still invented issues (e.g. an "ł" tip for "sklep"). Known limitation; tune with real clips via `stt_eval.py`, consider a stronger model for pronunciation later.
 - **Test fix found here:** ending a read-only DB session without committing kept SQLite locked for seconds on WebSocket close; regrade now always ends its transaction.
 
+## 015 — Slice 3b: flashcards, listen and repeat (2026-11-12)
+- **Flashcards over REST**, not the WebSocket: they are reviewed outside a conversation and fit plain request/response. Same Bearer auth as `/me`; a learner only reaches their own cards (404 otherwise). SPEC §5 updated with the table and routes.
+- **SM-2 with a short relearn step:** a failed card (grade < 3) is due again in 10 minutes instead of tomorrow. UI buttons map to grades 1/3/4/5.
+- **Cards are created from every non-ok feedback**, deduplicated by `(user, kind, front)`; the grammar front marks the mistake in context with «».
+- **`speak_word`** goes through the normal TTS chain and cache: repeating a word costs nothing (verified: one `tts_chars` row for two plays). **`pron_retry`** is judged directly from the audio by the feedback model (no STT step), with structured output; its audio seconds count toward the daily STT cap.
+- **Real check (2026-11-12, synthetic clips):** "também" said by a Polish edge-tts voice → `better: false` with a tip about the nasal ending, in Polish; by a Brazilian voice → `better: true`.
+- **Test harness:** the server closes a session after the client disconnects; the test clients now wait for that before stopping their event loop, and a thread hitting a closed loop is now a test error (it was an intermittent warning).
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |

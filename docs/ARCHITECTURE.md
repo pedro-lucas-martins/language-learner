@@ -2,7 +2,7 @@
 
 Describes what exists **now**. Target design lives in [`SPEC.md`](SPEC.md).
 
-_Last updated: slice 3a (Track 2 feedback, recast and regrade on the backend; panel UI in 3c)._
+_Last updated: slice 3b (feedback, flashcards and listen-and-repeat on the backend; panel UI in 3c)._
 
 ## Overview
 
@@ -31,6 +31,13 @@ filtered (`feedback.py`), stored on `messages.feedback` and sent as `feedback`. 
 in the learner's native language. `regrade` edits a message's text and re-runs grammar.
 `set_recast` toggles the pronunciation recast: when on, voice turns also send the audio to the
 chat model with a recast rule.
+
+## Flashcards and listen-and-repeat
+
+Every feedback with mistakes adds cards (`flashcards.py`, deduplicated). REST under
+`/flashcards` lists due cards and records SM-2 reviews (`sm2.py`). Over the WebSocket,
+`speak_word` sends a word's audio (`message_id = word:<word>`, cached) and `pron_retry`
+(a `start_of_speech` with `purpose: pron_retry`) returns `pron_result` judged from the audio.
 
 ## A text turn
 
@@ -72,6 +79,9 @@ chat model with a recast rule.
 | `app/services/conversation.py` | Per-socket orchestrator: turn tasks, barge-in, LLM → sentences → TTS, metrics |
 | `app/services/stt_service.py` | Gemini speech-to-text: verbatim prompt, retry, audio seconds |
 | `app/services/feedback.py` | Track 2 prompts per direction, JSON schema, validation and filters |
+| `app/services/flashcards.py` | Cards from feedback (front/back, dedupe) |
+| `app/services/sm2.py` | SM-2 scheduling (pure) |
+| `app/routers/flashcards.py` | `GET /flashcards`, `POST /flashcards/{id}/review`, `DELETE /flashcards/{id}` |
 | `app/services/sentence_buffer.py` | Splits the streamed reply into sentences (decimals, dates, abbreviations) |
 | `app/services/tts/base.py` | `TtsProvider` interface, `TtsError`, first-byte/total timeouts, voice choice |
 | `app/services/tts/google.py` | Google Chirp 3 HD via gRPC streaming, OGG_OPUS output |

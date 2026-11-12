@@ -18,6 +18,7 @@ from app.protocol import (
     RegradeMsg,
     SetLevelMsg,
     SetRecastMsg,
+    SpeakWordMsg,
     StartOfSpeechMsg,
     UserStartedSpeakingMsg,
     UserTextMsg,
@@ -40,8 +41,11 @@ MAX_UTTERANCE_BYTES = 2 * 1024 * 1024
 class _Utterance:
     """Audio announced by start_of_speech, received as binary, closed by end_of_speech."""
 
-    def __init__(self, mime: str) -> None:
-        self.mime = mime
+    def __init__(self, start: StartOfSpeechMsg) -> None:
+        self.mime = start.mime
+        self.purpose = start.purpose
+        self.target_word = start.target_word or ""
+        self.message_id = start.message_id or ""
         self.parts: list[bytes] = []
         self.size = 0
 
@@ -134,18 +138,23 @@ async def chat_socket(websocket: WebSocket) -> None:
             elif isinstance(msg, RegradeMsg):
                 await conversation.regrade(msg.message_id, msg.text)
             elif isinstance(msg, StartOfSpeechMsg):
-                if msg.purpose != "utterance":
-                    await bad_request()  # pron_retry arrives in slice 3
+                if msg.purpose == "pron_retry" and not (msg.target_word or "").strip():
+                    await bad_request()
                     continue
-                utterance = _Utterance(msg.mime)
+                utterance = _Utterance(msg)
             elif isinstance(msg, EndOfSpeechMsg):
                 if utterance is None or not utterance.parts:
                     utterance = None
                     await bad_request()
                     continue
-                audio, mime = b"".join(utterance.parts), utterance.mime
-                utterance = None
-                await conversation.submit_utterance(audio, mime)
+                done, utterance = utterance, None
+                audio = b"".join(done.parts)
+                if done.purpose == "pron_retry":
+                    conversation.pron_retry(audio, done.mime, done.target_word, done.message_id)
+                else:
+                    await conversation.submit_utterance(audio, done.mime)
+            elif isinstance(msg, SpeakWordMsg):
+                conversation.speak_word(msg.word)
             elif isinstance(msg, UserStartedSpeakingMsg):
                 await conversation.interrupt()
             # A second `auth` after login is ignored.

@@ -23,6 +23,7 @@ export type ClientMsg =
   | { type: "set_level"; level: Level }
   | { type: "regrade"; message_id: string; text: string }
   | { type: "set_recast"; enabled: boolean }
+  | { type: "speak_word"; word: string }
   | {
       type: "start_of_speech";
       mime: string;
@@ -103,6 +104,7 @@ export type ServerMsg =
       errs: GrammarError[];
       pron: PronIssue[];
     }
+  | { type: "pron_result"; message_id: string; word: string; better: boolean; tip: string }
   | { type: "error"; code: ErrorCode; message: string };
 
 const SERVER_TYPES = new Set<ServerMsg["type"]>([
@@ -116,6 +118,7 @@ const SERVER_TYPES = new Set<ServerMsg["type"]>([
   "interrupted",
   "metrics",
   "feedback",
+  "pron_result",
   "usage",
   "error",
 ]);

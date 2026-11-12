@@ -17,7 +17,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Literal
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 from app.config import Settings
 from app.protocol import GrammarError, PronIssue
@@ -282,4 +282,78 @@ async def analyze(
         role = "feedback" if model == settings.gemini_feedback_model else "utility"
         await record(role, model, used)
         return parse_feedback(raw, text, with_audio=with_audio)
+    return None
+
+
+# --- pron_retry: judge one attempt at one word (SPEC §5) -----------------------------------
+
+RETRY_JSON_SCHEMA: dict[str, object] = {
+    "type": "object",
+    "properties": {"better": {"type": "boolean"}, "tip": {"type": "string"}},
+    "required": ["better", "tip"],
+}
+
+
+class RetryResult(BaseModel):
+    better: bool
+    tip: str = Field(max_length=400)
+
+
+def retry_system_prompt(target_lang: str, native_lang: str, word: str) -> str:
+    target, native = LANG_NAMES[target_lang], LANG_NAMES[native_lang]
+    return "\n".join(
+        [
+            f"You are a kind {target} pronunciation coach. The learner's native language is "
+            f"{native}.",
+            f'The learner tried to say the {target} word or phrase "{word}" in the attached '
+            "recording.",
+            '- "better": true if it is pronounced clearly and acceptably for a learner (a slight '
+            "accent is fine); false if the key sounds are still wrong, it is unclear, or a "
+            "different word was said.",
+            f'- "tip": one short, encouraging sentence written in {native} (never in English): '
+            "what to keep doing, or the one thing to change.",
+            'Answer with JSON only: {"better": true, "tip": "..."}',
+        ]
+    )
+
+
+async def judge_retry(
+    llm: LlmProvider,
+    settings: Settings,
+    *,
+    word: str,
+    audio: AudioInput,
+    target_lang: str,
+    native_lang: str,
+    budget_exceeded: bool,
+    record: RecordFeedback,
+) -> tuple[RetryResult, LlmUsage, str] | None:
+    """Returns (result, usage, model) or None when no usable answer came back."""
+    model = feedback_model(settings, budget_exceeded=budget_exceeded)
+    if not model:
+        return None
+    for attempt in range(2):
+        try:
+            raw, used = await llm.analyze(
+                model=model,
+                system=retry_system_prompt(target_lang, native_lang, word),
+                prompt=f'Target: "{word}"',
+                audio=audio,
+                max_output_tokens=300,
+                temperature=FEEDBACK_TEMPERATURE,
+                json_schema=RETRY_JSON_SCHEMA,
+            )
+        except LlmError as exc:
+            log.warning("pron_retry attempt %d failed: %s", attempt + 1, exc)
+            if exc.code in ("bad_request", "not_configured") or attempt == 1:
+                return None
+            await asyncio.sleep(RETRY_DELAY_S)
+            continue
+        role = "feedback" if model == settings.gemini_feedback_model else "utility"
+        await record(role, model, used)
+        try:
+            return RetryResult.model_validate_json(_strip_fence(raw)), used, model
+        except ValidationError as exc:
+            log.warning("pron_retry JSON rejected: %s", exc.errors()[:2])
+            return None
     return None
