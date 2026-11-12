@@ -1,6 +1,7 @@
 import { useState, type PointerEvent } from "react";
 
 import { t } from "../i18n.ts";
+import { MicIcon, PlayIcon } from "./icons.tsx";
 import type { Practice } from "./practice.ts";
 
 interface Props {
@@ -10,8 +11,7 @@ interface Props {
   practice: Practice;
 }
 
-const btn =
-  "min-h-12 min-w-12 rounded-lg px-2 text-sm font-medium text-slate-600 hover:bg-slate-100 disabled:opacity-40 dark:text-slate-300 dark:hover:bg-slate-700";
+const btn = "icon-btn size-10 text-xs font-semibold";
 
 /** ▶ listen (1× / 0.8×) and 🎙 hold to try again, with the verdict (SPEC §5). */
 export function WordPractice({ word, contextId, practice }: Props) {
@@ -42,7 +42,7 @@ export function WordPractice({ word, contextId, practice }: Props) {
           aria-label={`${t(lang, "listen")}: ${word}`}
           title={t(lang, "listen")}
         >
-          ▶
+          <PlayIcon className="size-4" />
         </button>
         <button
           type="button"
@@ -56,7 +56,7 @@ export function WordPractice({ word, contextId, practice }: Props) {
         </button>
         <button
           type="button"
-          className={`${btn} ${holding ? "bg-red-600 text-white hover:bg-red-600" : ""}`}
+          className={`${btn} ${holding ? "bg-rose-500 text-white hover:bg-rose-500 hover:text-white" : ""}`}
           onPointerDown={(e) => void down(e)}
           onPointerUp={() => void up()}
           onPointerCancel={() => void up()}
@@ -65,14 +65,14 @@ export function WordPractice({ word, contextId, practice }: Props) {
           aria-label={`${t(lang, "holdToTry")}: ${word}`}
           title={t(lang, "holdToTry")}
         >
-          🎙
+          <MicIcon className="size-4" />
         </button>
-        {holding && <span className="text-xs text-red-600">{t(lang, "tryRecording")}</span>}
+        {holding && <span className="text-xs text-rose-500">{t(lang, "tryRecording")}</span>}
       </div>
       {verdict && !holding && (
         <p
           role="status"
-          className={`mt-1 rounded-lg px-2 py-1 text-sm ${verdict.better ? "bg-emerald-50 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-100" : "bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100"}`}
+          className={`mt-1 rounded-xl px-3 py-2 text-sm ${verdict.better ? "bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-100" : "bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-100"}`}
         >
           <strong>{t(lang, verdict.better ? "better" : "notYet")}</strong> {verdict.tip}
         </p>

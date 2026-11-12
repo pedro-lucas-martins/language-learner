@@ -99,7 +99,7 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
       if (!send({ type: "start_of_speech", mime, purpose: "utterance" })) return false;
       socket.send(data);
       send({ type: "end_of_speech" });
-      dispatch({ type: "sent" });
+      dispatch({ type: "sent", voice: true });
       return true;
     },
     [send],

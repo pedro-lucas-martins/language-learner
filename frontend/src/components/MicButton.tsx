@@ -2,6 +2,7 @@ import type { KeyboardEvent, PointerEvent } from "react";
 
 import { t } from "../i18n.ts";
 import type { Lang } from "../protocol.ts";
+import { MicIcon } from "./icons.tsx";
 
 interface Props {
   lang: Lang;
@@ -36,10 +37,10 @@ export function MicButton({ lang, recording, handsFree, disabled, onPress, onRel
   }
 
   const tone = recording
-    ? "bg-red-600 text-white"
+    ? "bg-rose-500 text-white"
     : handsFree
-      ? "bg-emerald-600 text-white"
-      : "bg-slate-200 text-slate-800 dark:bg-slate-700 dark:text-slate-100";
+      ? "bg-accent-600 text-white"
+      : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100";
 
   return (
     <button
@@ -55,17 +56,15 @@ export function MicButton({ lang, recording, handsFree, disabled, onPress, onRel
       onKeyUp={keyUp}
       onContextMenu={(e) => e.preventDefault()}
       style={{ touchAction: "none" }}
-      className={`relative flex size-12 shrink-0 select-none items-center justify-center rounded-full transition-colors disabled:opacity-50 ${tone}`}
+      className={`relative flex size-11 shrink-0 select-none items-center justify-center rounded-full transition-colors disabled:opacity-40 ${tone}`}
     >
       {(recording || handsFree) && (
         <span
           aria-hidden
-          className={`absolute inset-0 rounded-full ${recording ? "animate-ping bg-red-500/40" : "animate-pulse bg-emerald-500/30"}`}
+          className={`absolute inset-0 rounded-full ${recording ? "animate-ping bg-rose-400/40" : "animate-pulse bg-accent-500/25"}`}
         />
       )}
-      <svg aria-hidden viewBox="0 0 24 24" className="relative size-6" fill="currentColor">
-        <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z" />
-      </svg>
+      <MicIcon className="relative size-5" />
     </button>
   );
 }

@@ -127,6 +127,12 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Consequence:** ~1 s more per voice turn and ~2.5× the STT price (still cents per day); the price doubles on 2027-01-01. The stronger model still "fixes" some mistakes (e.g. "dwa kot" → "dwa koty"), so the editable transcript remains necessary.
 - **Also seen:** the feedback model once suggested "dwie koty" (wrong; "dwa koty"). Feedback stays on `gemini-3.5-flash-lite` for now; moving it to a stronger model is the next lever if wrong corrections repeat.
 
+## 019 — Light, minimal look and a "thinking" indicator (2026-11-12)
+- **Context:** the author found the UI unattractive and wanted it lighter and more minimal, with a sign that the AI is working.
+- **Decision:** light theme by default (zinc neutrals, one indigo accent in `@theme`), dark only when chosen in the settings menu (class-based `dark` variant, remembered in `localStorage`; applied before the first paint). Reusable building blocks are Tailwind v4 `@utility` classes in `index.css` (`@layer components` cannot be composed with `@apply` in v4). Level, interface language, pronunciation echo, theme and logout moved into one ⚙ menu; the input is a single rounded bar with mic and send icons; inline SVG icons, no icon library.
+- **Thinking indicator:** the reducer tracks `phase` (`transcribing` after a voice message is sent, `thinking` after the transcript, `idle` once the reply starts streaming or on error). Animated dots "Transcrevendo…" on the learner's side and "Pensando…" on the AI's side; respects `prefers-reduced-motion`.
+- **Consequence:** SPEC §9 still asks for light/dark — both exist, light is the default. The full responsive shell remains slice 5.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |

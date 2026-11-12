@@ -24,6 +24,8 @@ export interface ChatMessage {
 }
 
 export type ConnectionStatus = "connecting" | "ready" | "closed";
+/** What the server is doing for the current turn, for the "thinking" indicator. */
+export type TurnPhase = "idle" | "transcribing" | "thinking";
 export type CloseReason = "unauthorized" | "origin" | "network";
 
 export interface Usage {
@@ -47,6 +49,7 @@ export interface ChatState {
   messages: ChatMessage[];
   /** A message was sent and the turn has not finished yet. */
   awaitingReply: boolean;
+  phase: TurnPhase;
   error: string | null;
   usage: Usage | null;
   metrics: Metrics | null;
@@ -62,7 +65,7 @@ export type ChatAction =
   | { type: "connecting" }
   | { type: "server"; msg: ServerMsg }
   | { type: "closed"; code: number }
-  | { type: "sent" }
+  | { type: "sent"; voice?: boolean }
   | { type: "dismiss_error" }
   /** The learner fixed a transcript (a regrade follows). */
   | { type: "edit_message"; id: string; text: string }
@@ -74,6 +77,7 @@ export const initialChatState: ChatState = {
   user: null,
   messages: [],
   awaitingReply: false,
+  phase: "idle",
   error: null,
   usage: null,
   metrics: null,
@@ -103,12 +107,18 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         status: "closed",
         closeReason,
         awaitingReply: false,
+        phase: "idle",
         messages: finishStreaming(state.messages),
       };
     }
 
     case "sent":
-      return { ...state, awaitingReply: true, error: null };
+      return {
+        ...state,
+        awaitingReply: true,
+        phase: action.voice ? "transcribing" : "thinking",
+        error: null,
+      };
 
     case "dismiss_error":
       return { ...state, error: null };
@@ -139,6 +149,7 @@ function applyServerMsg(state: ChatState, msg: ServerMsg): ChatState {
       return {
         ...state,
         awaitingReply: true,
+        phase: "thinking",
         messages: [
           ...state.messages,
           { id: msg.message_id, role: "user", text: msg.text, streaming: false },
@@ -150,6 +161,7 @@ function applyServerMsg(state: ChatState, msg: ServerMsg): ChatState {
       if (index === -1) {
         return {
           ...state,
+          phase: "idle",
           messages: [
             ...state.messages,
             { id: msg.message_id, role: "ai", text: msg.delta, streaming: true },
@@ -168,6 +180,7 @@ function applyServerMsg(state: ChatState, msg: ServerMsg): ChatState {
       return {
         ...state,
         awaitingReply: false,
+        phase: "idle",
         messages: exists
           ? state.messages.map((m) => (m.id === msg.message_id ? done : m))
           : [...state.messages, done],
@@ -185,7 +198,12 @@ function applyServerMsg(state: ChatState, msg: ServerMsg): ChatState {
       };
 
     case "interrupted":
-      return { ...state, awaitingReply: false, messages: finishStreaming(state.messages) };
+      return {
+        ...state,
+        awaitingReply: false,
+        phase: "idle",
+        messages: finishStreaming(state.messages),
+      };
 
     case "metrics":
       return {
@@ -226,6 +244,7 @@ function applyServerMsg(state: ChatState, msg: ServerMsg): ChatState {
       return {
         ...state,
         awaitingReply: false,
+        phase: "idle",
         error: msg.message,
         messages: finishStreaming(state.messages),
       };

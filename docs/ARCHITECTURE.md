@@ -133,6 +133,11 @@ The spend estimate multiplies summed usage by the `PRICE_*` settings.
 | `src/components/CorrectionItem.tsx` | One message's grammar and pronunciation feedback |
 | `src/components/WordPractice.tsx` | ▶ 1× / 0.8× and 🎙 hold-to-retry for one word, with the verdict |
 | `src/components/FlashcardReview.tsx` | Review due cards: flip, grade, delete |
+| `src/index.css` | Theme tokens (`@theme`), building blocks (`@utility`), thinking-dots animation |
+| `src/theme.ts` | Light (default) / dark theme, remembered per browser |
+| `src/components/SettingsMenu.tsx` | ⚙ menu: level, interface language, pronunciation echo, theme, logout |
+| `src/components/ThinkingBubble.tsx` | "Transcribing…" / "Thinking…" indicator |
+| `src/components/icons.tsx` | Inline line icons |
 | `src/components/MicButton.tsx` | Tap = hands-free on/off, hold = push-to-talk |
 | `src/components/LoginScreen.tsx` | Token login (language guessed from the browser) |
 | `src/components/ChatScreen.tsx` | Chat, mic, replay, editable transcripts, recast switch, panel/sheet, metrics |

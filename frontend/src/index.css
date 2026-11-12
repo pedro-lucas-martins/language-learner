@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* Dark mode is opt-in (theme switch), not tied to the system setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* One calm accent, neutral greys, generous spacing. */
+@theme {
+  --color-accent-50: oklch(97% 0.02 270);
+  --color-accent-100: oklch(94% 0.04 270);
+  --color-accent-500: oklch(58% 0.17 270);
+  --color-accent-600: oklch(51% 0.19 270);
+  --color-accent-700: oklch(45% 0.18 270);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
 html,
 body,
 #root {
@@ -7,5 +20,75 @@ body,
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  @apply bg-zinc-50 font-sans text-zinc-800 antialiased dark:bg-zinc-950 dark:text-zinc-100;
+}
+
+/* Reusable building blocks (Tailwind v4 utilities, so they can be composed with @apply). */
+@utility surface {
+  @apply bg-white dark:bg-zinc-900;
+}
+@utility hairline {
+  @apply border-zinc-200/80 dark:border-zinc-800;
+}
+@utility muted {
+  @apply text-zinc-500 dark:text-zinc-400;
+}
+@utility icon-btn {
+  @apply inline-flex size-10 shrink-0 items-center justify-center rounded-full text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 disabled:opacity-40 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100;
+}
+@utility btn {
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-sm font-medium transition-colors disabled:opacity-40;
+}
+@utility btn-primary {
+  @apply btn bg-accent-600 text-white hover:bg-accent-700;
+}
+@utility btn-quiet {
+  @apply btn text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800;
+}
+@utility field {
+  @apply w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 outline-none transition-colors placeholder:text-zinc-400 focus:border-accent-500 focus:ring-4 focus:ring-accent-100 dark:border-zinc-700 dark:bg-zinc-900 dark:focus:ring-accent-700/30;
+}
+@utility chip {
+  @apply inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300;
+}
+@utility bubble {
+  @apply max-w-[80%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 leading-relaxed;
+}
+@utility bubble-user {
+  @apply bubble rounded-br-md bg-accent-600 text-left text-white;
+}
+@utility bubble-ai {
+  @apply bubble rounded-bl-md border border-zinc-200/80 bg-white text-zinc-800 shadow-[0_1px_2px_rgb(0_0_0/0.04)] dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100;
+}
+@utility card {
+  @apply rounded-2xl border border-zinc-200/80 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900;
+}
+
+/* "Thinking" dots */
+@keyframes ll-dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+.ll-dot {
+  animation: ll-dot 1.2s infinite ease-in-out;
+}
+.ll-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.ll-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ll-dot {
+    animation: none;
+    opacity: 0.6;
+  }
 }

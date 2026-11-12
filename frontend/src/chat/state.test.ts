@@ -169,5 +169,19 @@ describe("chatReducer", () => {
     });
     expect(s.pronResults["u1|łóżko"]).toEqual({ better: true, tip: "Bom!" });
   });
+
+  it("tracks the turn phase for the thinking indicator", () => {
+    let s = chatReducer(initialChatState, { type: "sent", voice: true });
+    expect(s.phase).toBe("transcribing");
+    s = apply(s, { type: "transcript", message_id: "u1", text: "Oi" });
+    expect(s.phase).toBe("thinking");
+    s = apply(s, { type: "ai_text_delta", message_id: "a1", delta: "Ol" });
+    expect(s.phase).toBe("idle");
+
+    s = chatReducer(s, { type: "sent" });
+    expect(s.phase).toBe("thinking");
+    s = apply(s, { type: "error", code: "provider_unavailable", message: "x" });
+    expect(s.phase).toBe("idle");
+  });
 });
 
