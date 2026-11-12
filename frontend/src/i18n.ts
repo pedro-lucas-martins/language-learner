@@ -70,6 +70,7 @@ const ptBR = {
   deleteCard: "Apagar cartão",
   refresh: "Atualizar",
   loadError: "Não foi possível carregar os cartões.",
+  uiLanguage: "Idioma do app e das explicações",
 } as const;
 
 type Strings = { [K in keyof typeof ptBR]: string };
@@ -140,6 +141,7 @@ const plPL: Strings = {
   deleteCard: "Usuń fiszkę",
   refresh: "Odśwież",
   loadError: "Nie udało się wczytać fiszek.",
+  uiLanguage: "Język aplikacji i wyjaśnień",
 };
 
 export type StringKey = keyof typeof ptBR;

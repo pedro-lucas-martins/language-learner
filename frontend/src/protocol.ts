@@ -24,6 +24,7 @@ export type ClientMsg =
   | { type: "regrade"; message_id: string; text: string }
   | { type: "set_recast"; enabled: boolean }
   | { type: "speak_word"; word: string }
+  | { type: "set_ui_lang"; ui_lang: Lang }
   | {
       type: "start_of_speech";
       mime: string;
@@ -40,6 +41,8 @@ export interface UserInfo {
   name: string;
   native_lang: Lang;
   target_lang: Lang;
+  /** Interface and explanation language (defaults to native_lang on the server). */
+  ui_lang: Lang;
   level: Level;
   recast_pronunciation: boolean;
 }

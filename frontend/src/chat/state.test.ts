@@ -6,6 +6,7 @@ import { chatReducer, initialChatState, type ChatState } from "./state.ts";
 const user: UserInfo = {
   name: "Pedro",
   native_lang: "pt-BR",
+  ui_lang: "pt-BR",
   target_lang: "pl-PL",
   level: "A1",
   recast_pronunciation: true,

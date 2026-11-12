@@ -167,3 +167,13 @@ def test_pronunciation_heard_exactly_as_written_is_dropped() -> None:
     ]
     result = fb.parse_feedback(payload(ok=False, errs=[], pron=pron), MSG, with_audio=True)
     assert result is not None and [p.w for p in result.pron] == ["kot"]
+
+
+def test_explanation_language_can_differ_from_native() -> None:
+    """A Polish learner of Portuguese who reads the app in Portuguese (ui_lang)."""
+    prompt = fb.feedback_system_prompt("pt-BR", "pl-PL", with_audio=True, explain_lang="pt-BR")
+    assert "MUST be written in Brazilian Portuguese" in prompt
+    assert "Polish⇄Brazilian Portuguese contrast tip written in Brazilian Portuguese" in prompt
+    assert "Depois de 'gostar'" in prompt  # style example in the explanation language
+    retry = fb.retry_system_prompt("pt-BR", "pl-PL", "também", "pt-BR")
+    assert "written in Brazilian Portuguese" in retry

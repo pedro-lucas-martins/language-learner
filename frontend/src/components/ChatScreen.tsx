@@ -57,6 +57,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
     regrade,
     setRecast,
     speakWord,
+    setUiLang,
     correctionsSeen,
     setLevel,
     reconnect,
@@ -75,7 +76,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
   const [sheetOpen, setSheetOpen] = useState(false);
   const isWide = useIsWide();
   const listRef = useRef<HTMLDivElement>(null);
-  const lang: Lang = state.user?.native_lang ?? fallbackLang;
+  const lang: Lang = state.user?.ui_lang ?? fallbackLang;
 
   const entries = useMemo(
     () => correctionEntries(state.messages, state.feedback),
@@ -196,6 +197,17 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
               ))}
             </select>
           </label>
+          <select
+            aria-label={t(lang, "uiLanguage")}
+            title={t(lang, "uiLanguage")}
+            value={lang}
+            disabled={state.status !== "ready"}
+            onChange={(e) => setUiLang(e.target.value as Lang)}
+            className="min-h-10 rounded-lg border border-slate-300 bg-transparent px-1 text-sm dark:border-slate-700"
+          >
+            <option value="pt-BR">PT</option>
+            <option value="pl-PL">PL</option>
+          </select>
           <button
             type="button"
             aria-pressed={state.user?.recast_pronunciation ?? false}

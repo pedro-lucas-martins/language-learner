@@ -104,6 +104,29 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Recast switch** in the header sends `set_recast`.
 - **Flashcards UI** uses the REST client (`api.ts`): due cards, show answer, grades Again/Hard/Good/Easy = 1/3/4/5, delete. The LAN proxy also forwards `/flashcards`.
 
+## 017 — Interface and explanation language per user (2026-11-12)
+- **Context:** the author (a Portuguese speaker) wants to try the PL→PT direction, but its learner's UI and explanations were in Polish.
+- **Decision:** `users.ui_lang` (nullable → `native_lang`), changed in the app with `set_ui_lang` or at creation with `create_user.py --ui-lang`. It drives the UI strings, server messages and the language of `r`, `p` and `tip`; contrast tips still compare with `native_lang`. SPEC §1, §3, §7 updated; migration `0004`.
+- **Consequence:** "Aluno PL" (learns Portuguese) now reads everything in Portuguese.
+
+## 018 — Better STT for learners' accents (2026-11-12)
+- **Context:** the author reported the app did not understand their Polish. Their transcripts showed it ("Mam na imię Pedro" → "Na imieniem, Pedro" / "Ja kocham na imię").
+- **Measured** on 6 Polish sentences with beginner mistakes read by a Brazilian voice (edge-tts), WER vs. what was said:
+
+  | STT | WER | median time |
+  |---|---|---|
+  | 3.5-flash-lite (before) | 68% | 1.9 s |
+  | 3.5-flash-lite + context | 36% | 1.4 s |
+  | 3.8-flash | 14% | 4.2 s |
+  | 3.8-flash + context | 17% | 5.4 s |
+  | 3.8-flash, thinking LOW | 18% | 3.0 s |
+  | **3.8-flash, thinking LOW + context** | **13%** | **2.8 s** |
+
+  (`MINIMAL` thinking is rejected by 3.8-flash.)
+- **Decision:** `GEMINI_STT_MODEL=gemini-3.8-flash`, new `GEMINI_STT_THINKING_LEVEL=LOW`, and the STT prompt gets the AI's last message as context ("use it only to recognise hard words; keep every mistake"). New `PRICE_STT_OUTPUT_PER_M`.
+- **Consequence:** ~1 s more per voice turn and ~2.5× the STT price (still cents per day); the price doubles on 2027-01-01. The stronger model still "fixes" some mistakes (e.g. "dwa kot" → "dwa koty"), so the editable transcript remains necessary.
+- **Also seen:** the feedback model once suggested "dwie koty" (wrong; "dwa koty"). Feedback stays on `gemini-3.5-flash-lite` for now; moving it to a stronger model is the next lever if wrong corrections repeat.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |
@@ -119,7 +142,7 @@ Short records: context → decision → consequence. Newest at the bottom.
 |---|---|---|---|
 | `GEMINI_CHAT_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (text/audio) / 2.50 out per 1M | 2026-11-12 |
 | `GEMINI_UTILITY_MODEL` | `gemini-3.1-flash-lite` | US$ 0.25 in (0.50 audio) / 1.50 out per 1M | 2026-11-12 |
-| `GEMINI_STT_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (audio) per 1M | 2026-11-12 |
+| `GEMINI_STT_MODEL` | `gemini-3.8-flash` (thinking LOW), was `gemini-3.5-flash-lite` | US$ 0.75 in / 3.75 out per 1M until 2026-12-31, then 1.50 / 7.50 | 2026-11-12 |
 | `GEMINI_FEEDBACK_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (text/audio) / 2.50 out per 1M | 2026-11-12 |
 | `TTS_PROVIDER` (after benchmark) | `google` | free tier 1M chars/month | 2026-11-12 |
 | TTS model / plan | Chirp 3 HD, voices Kore (F) and Charon (M), OGG_OPUS | free tier (`TTS_MONTHLY_CHARS=1000000`, `PRICE_TTS_PER_1K_CHARS=0`) | 2026-11-12 |

@@ -18,6 +18,7 @@ from app.protocol import (
     RegradeMsg,
     SetLevelMsg,
     SetRecastMsg,
+    SetUiLangMsg,
     SpeakWordMsg,
     StartOfSpeechMsg,
     UserStartedSpeakingMsg,
@@ -98,7 +99,7 @@ async def chat_socket(websocket: WebSocket) -> None:
         await send(
             ErrorMsg(
                 code="bad_request",
-                message=error_text(conversation.learner.native_lang, "bad_request"),
+                message=error_text(conversation.learner.ui_lang, "bad_request"),
             )
         )
 
@@ -133,6 +134,8 @@ async def chat_socket(websocket: WebSocket) -> None:
                 await conversation.submit_text(msg.text)
             elif isinstance(msg, SetLevelMsg):
                 await conversation.set_level(msg.level)
+            elif isinstance(msg, SetUiLangMsg):
+                await conversation.set_ui_lang(msg.ui_lang)
             elif isinstance(msg, SetRecastMsg):
                 await conversation.set_recast(msg.enabled)
             elif isinstance(msg, RegradeMsg):

@@ -92,8 +92,12 @@ class LlmProvider(Protocol):
         audio: bytes,
         mime: str,
         max_output_tokens: int,
+        thinking_level: str = "",
     ) -> tuple[str, LlmUsage]:
-        """Speech-to-text with temperature 0 (SPEC §5). Raise LlmError on failure."""
+        """Speech-to-text with temperature 0 (SPEC §5). Raise LlmError on failure.
+
+        `thinking_level` overrides the provider's default for this call.
+        """
         ...
 
     async def analyze(
@@ -140,14 +144,12 @@ class GeminiProvider:
         *,
         json_output: bool = False,
         json_schema: dict[str, object] | None = None,
+        thinking_level: str = "",
     ):
         from google.genai import types
 
-        thinking = (
-            types.ThinkingConfig(thinking_level=self._thinking_level)
-            if self._thinking_level
-            else None
-        )
+        level = (thinking_level or self._thinking_level).upper()
+        thinking = types.ThinkingConfig(thinking_level=level) if level else None
         return types.GenerateContentConfig(
             system_instruction=system,
             max_output_tokens=max_output_tokens,
@@ -271,6 +273,7 @@ class GeminiProvider:
         audio: bytes,
         mime: str,
         max_output_tokens: int,
+        thinking_level: str = "",
     ) -> tuple[str, LlmUsage]:
         from google.genai import types
 
@@ -290,7 +293,9 @@ class GeminiProvider:
                 response = await self._get_client().aio.models.generate_content(
                     model=model,
                     contents=contents,
-                    config=self._config(system, max_output_tokens, 0.0),
+                    config=self._config(
+                        system, max_output_tokens, 0.0, thinking_level=thinking_level
+                    ),
                 )
         except Exception as exc:  # noqa: BLE001
             raise self._map_error(exc) from exc
@@ -476,6 +481,7 @@ class FakeLlm:
         audio: bytes,
         mime: str,
         max_output_tokens: int,
+        thinking_level: str = "",
     ) -> tuple[str, LlmUsage]:
         self.transcribe_calls.append(
             {
@@ -484,6 +490,7 @@ class FakeLlm:
                 "instruction": instruction,
                 "mime": mime,
                 "bytes": len(audio),
+                "thinking_level": thinking_level,
             }
         )
         if self.transcribe_failures:

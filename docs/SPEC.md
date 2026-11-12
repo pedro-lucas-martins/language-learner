@@ -16,7 +16,7 @@ It is **bidirectional**: each user has a `native_lang` and a `target_lang`.
 | PL→PT | Pole learning Portuguese | pt-BR | pl-PL |
 
 Both directions are first-class: every feature (prompts, topics, grammar and pronunciation rules, voices, UI strings) must exist for both.
-The UI language follows `native_lang` (simple i18n dictionary, two locales: `pt-BR`, `pl-PL`).
+The UI language — and the language of every explanation (grammar rules, contrast tips, pronunciation tips) — is `ui_lang`, which defaults to `native_lang` (simple i18n dictionary, two locales: `pt-BR`, `pl-PL`). A learner can change it in the app (`set_ui_lang`); contrast tips still compare with `native_lang`. This also lets a Portuguese speaker try the PL→PT direction while reading everything in Portuguese.
 
 Core experience: **free talk** with a friendly native-speaker AI, adapted to the learner's CEFR level (A1–C1), plus:
 - **Topic suggestions** when the learner gets stuck (zero LLM tokens).
@@ -54,7 +54,7 @@ The Gemini paid tier is required (not free tier) because free-tier content may b
 ## 3. Users, access and security
 
 - Small number of known users (personal project). No public sign-up.
-- `users` table: `id, name, native_lang, target_lang, level, user_facts (≤100 words), voice_id, recast_pronunciation (bool, default true), access_token_hash, created_at`.
+- `users` table: `id, name, native_lang, target_lang, ui_lang (nullable → native_lang), level, user_facts (≤100 words), voice_id, recast_pronunciation (bool, default true), access_token_hash, created_at`.
 - `usage_events` table: `user_id, kind (llm_in|llm_out|stt_audio_s|tts_chars), model, amount, created_at` — the single source for daily caps, monthly spend estimate and the usage HUD.
 - A CLI script `backend/scripts/create_user.py` creates a user and prints a random access token once (store only the hash).
 - Frontend: a login screen asking for the token; stored in `localStorage` (wrapped in try/catch).
@@ -203,12 +203,13 @@ Client → server:
 | `set_level` | `level` (A1…C1) |
 | `regrade` | `message_id`, `text` (grammar only — no audio) |
 | `set_recast` | `enabled` (bool) — pronunciation recast in Track 1 (§4.1) |
+| `set_ui_lang` | `ui_lang` (`pt-BR` \| `pl-PL`) — interface and explanation language (§1) |
 | `speak_word` | `word` — returns cached TTS audio for the panel's ▶ button |
 
 Server → client:
 | type | payload |
 |---|---|
-| `ready` | `user` (name, langs, level, voice, `recast_pronunciation`), `session_id` |
+| `ready` | `user` (name, `native_lang`, `target_lang`, `ui_lang`, level, voice, `recast_pronunciation`), `session_id` |
 | `user_updated` | `user` (same shape as in `ready`) — after `set_level` or other settings changes |
 | `transcript` | `message_id`, `text` |
 | `ai_text_delta` | `message_id`, `delta` |

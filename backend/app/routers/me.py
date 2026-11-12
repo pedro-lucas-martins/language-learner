@@ -36,6 +36,7 @@ async def me(user: Annotated[User, Depends(current_user)]) -> UserInfo:
         name=user.name,
         native_lang=user.native_lang,  # type: ignore[arg-type]
         target_lang=user.target_lang,  # type: ignore[arg-type]
+        ui_lang=(user.ui_lang or user.native_lang),  # type: ignore[arg-type]
         level=user.level,  # type: ignore[arg-type]
         recast_pronunciation=user.recast_pronunciation,
     )

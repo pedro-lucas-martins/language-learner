@@ -91,6 +91,10 @@ class Learner:
     user_facts: str
     recast_pronunciation: bool
     voice_id: str | None = None
+    ui_lang: str = ""
+
+    def __post_init__(self) -> None:
+        self.ui_lang = self.ui_lang or self.native_lang
 
     @classmethod
     def from_model(cls, user: User) -> "Learner":
@@ -103,6 +107,7 @@ class Learner:
             user_facts=user.user_facts,
             recast_pronunciation=user.recast_pronunciation,
             voice_id=user.voice_id,
+            ui_lang=user.ui_lang or user.native_lang,
         )
 
     def info(self) -> UserInfo:
@@ -110,6 +115,7 @@ class Learner:
             name=self.name,
             native_lang=self.native_lang,  # type: ignore[arg-type]
             target_lang=self.target_lang,  # type: ignore[arg-type]
+            ui_lang=self.ui_lang,  # type: ignore[arg-type]
             level=self.level,  # type: ignore[arg-type]
             recast_pronunciation=self.recast_pronunciation,
         )
@@ -202,7 +208,7 @@ class Conversation:
 
     async def _error(self, key: str) -> None:
         await self.send(
-            ErrorMsg(code=wire_code(key), message=error_text(self.learner.native_lang, key))
+            ErrorMsg(code=wire_code(key), message=error_text(self.learner.ui_lang, key))
         )
 
     async def _snapshot(self) -> usage_svc.UsageSnapshot:
@@ -233,6 +239,19 @@ class Conversation:
         await self._send_usage()
 
     # --- commands -------------------------------------------------------------------
+
+    async def set_ui_lang(self, ui_lang: str) -> None:
+        """Interface + explanation language (SPEC §1)."""
+        async with session_factory()() as db:
+            user = await db.get(User, self.learner.id)
+            if user is not None:
+                user.ui_lang = None if ui_lang == user.native_lang else ui_lang
+            await db.commit()
+        if user is None:
+            await self._error("bad_request")
+            return
+        self.learner.ui_lang = ui_lang
+        await self.send(UserUpdatedMsg(user=self.learner.info()))
 
     async def set_recast(self, enabled: bool) -> None:
         """Pronunciation recast in Track 1 on/off (SPEC §4.1)."""
@@ -362,6 +381,7 @@ class Conversation:
                 target_lang=self.learner.target_lang,
                 native_lang=self.learner.native_lang,
                 record=self._record_stt,
+                context=self._last_ai_text(),
             )
         except SttError as exc:
             await self._error("not_configured" if exc.code == "not_configured" else "stt_failed")
@@ -370,6 +390,11 @@ class Conversation:
         await self._respond(
             result.text, snap, timings, audio=AudioInput(data=audio, mime=gemini_mime(mime))
         )
+
+    def _last_ai_text(self) -> str | None:
+        """The AI's last reply (context for the STT): what the learner is answering."""
+        turns = self.memory.context_turns()
+        return turns[-1].ai if turns else None
 
     async def _respond(
         self,
@@ -622,6 +647,7 @@ class Conversation:
             native_lang=self.learner.native_lang,
             budget_exceeded=snap.budget_exceeded,
             record=self._record_llm,
+            explain_lang=self.learner.ui_lang,
         )
         if judged is None:
             await self._error("stt_failed")
@@ -688,6 +714,7 @@ class Conversation:
                 native_lang=self.learner.native_lang,
                 budget_exceeded=budget_exceeded,
                 record=self._record_llm,
+                explain_lang=self.learner.ui_lang,
             )
             if result is None:
                 return

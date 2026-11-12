@@ -53,6 +53,8 @@ class User(Base):
     name: Mapped[str] = mapped_column(String(80))
     native_lang: Mapped[str] = mapped_column(String(5))
     target_lang: Mapped[str] = mapped_column(String(5))
+    # Interface + explanation language; None means native_lang (SPEC §1).
+    ui_lang: Mapped[str | None] = mapped_column(String(5), nullable=True)
     level: Mapped[str] = mapped_column(String(2), default="A1")
     user_facts: Mapped[str] = mapped_column(Text, default="")
     voice_id: Mapped[str | None] = mapped_column(String(120), nullable=True)

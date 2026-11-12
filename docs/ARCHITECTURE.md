@@ -16,11 +16,17 @@ browser (React)  ──WebSocket /ws──▶  FastAPI  ──▶  Gemini (chat 
 
 1. `start_of_speech` (`mime`) → one binary frame with the whole utterance (≤ 2 MB) → `end_of_speech`.
 2. Caps checked (daily LLM calls; daily STT seconds estimated from size). Gemini transcribes
-   verbatim (`stt_service.py`), `usage_events` get tokens and audio seconds.
+   verbatim (`stt_service.py`, own model and thinking level), with the AI's last message as
+   context for hard words; `usage_events` get tokens and audio seconds.
 3. From here it is a text turn (below) whose input is the transcript.
 
 The turn runs as an `asyncio` task. `user_started_speaking`, a new utterance or a typed message
 cancels it (LLM and TTS); the server sends `interrupted` and keeps the partial reply in history.
+
+## Interface language
+
+`users.ui_lang` (default: `native_lang`) sets the UI strings, server messages and the language
+of every explanation; `set_ui_lang` changes it from the header selector.
 
 ## Track 2: feedback (SPEC §5)
 
@@ -89,7 +95,7 @@ Every feedback with mistakes adds cards (`flashcards.py`, deduplicated). REST un
 | `app/services/tts/edge.py` | edge-tts, the free fallback (MP3) |
 | `app/services/tts/chain.py` | Active provider → edge-tts → `TtsUnavailable` (browser speaks); retry once |
 | `app/services/tts/cache.py` | `tts_cache` table access, sha256 key, LRU eviction by `TTS_CACHE_MAX_MB` |
-| `alembic/` | Migrations (`0001_initial`, `0002_tts_cache`, `0003_feedback_flashcards`) |
+| `alembic/` | Migrations `0001`–`0004` (initial, tts_cache, feedback + flashcards, ui_lang) |
 | `scripts/create_user.py` | Creates a learner and prints the token once |
 | `scripts/stt_eval.py` | Runs your recorded clips through the STT and compares with what you said |
 | `scripts/tts_bench.py` | TTS benchmark: TTFA per provider × language, blind A/B page, asks before spending |

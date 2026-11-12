@@ -49,6 +49,11 @@ class SetRecastMsg(_Msg):
     enabled: bool
 
 
+class SetUiLangMsg(_Msg):
+    type: Literal["set_ui_lang"]
+    ui_lang: Lang
+
+
 class SpeakWordMsg(_Msg):
     type: Literal["speak_word"]
     word: str = Field(min_length=1, max_length=80)
@@ -77,6 +82,7 @@ ClientMsg = Annotated[
     | RegradeMsg
     | SetRecastMsg
     | SpeakWordMsg
+    | SetUiLangMsg
     | StartOfSpeechMsg
     | EndOfSpeechMsg
     | UserStartedSpeakingMsg,
@@ -92,6 +98,7 @@ class UserInfo(BaseModel):
     name: str
     native_lang: Lang
     target_lang: Lang
+    ui_lang: Lang
     level: Level
     recast_pronunciation: bool
 

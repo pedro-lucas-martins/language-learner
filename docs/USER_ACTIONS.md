@@ -95,8 +95,11 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
 - [ ] Aba **Flashcards**: revise os cartões (Errei/Difícil/Bom/Fácil). Errou? O cartão volta em 10 minutos.
 - [ ] O botão **Eco de pronúncia** no topo liga/desliga o recast (a IA repete certo, sem explicar, a palavra
       que você pronunciou errado).
-- [ ] Para testar a direção PL→PT, entre com o usuário **Aluno PL** (token em `~/language-learner-token-pl.txt`;
-      guarde no gerenciador de senhas e apague o arquivo).
+- [ ] Para testar a direção PL→PT **falando português**, entre com o usuário **Aluno PL** (token em
+      `~/language-learner-token-pl.txt`; guarde no gerenciador de senhas e apague o arquivo). A interface e as
+      explicações dele já estão em português; o seletor PT/PL no topo troca o idioma.
+- [ ] Novos usuários com idioma de interface diferente: `--ui-lang`, ex.
+      `docker compose exec backend python -m scripts.create_user --name "Teste" --native pl-PL --ui-lang pt-BR`.
 
 ## Depois do benchmark
 

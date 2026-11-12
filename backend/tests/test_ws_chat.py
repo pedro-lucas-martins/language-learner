@@ -102,6 +102,7 @@ def test_ready_contains_user_info(client: TestClient, sync_engine: Engine) -> No
     assert ready["user"] == {
         "name": "Ola",
         "native_lang": "pl-PL",
+        "ui_lang": "pl-PL",
         "target_lang": "pt-BR",
         "level": "B2",
         "recast_pronunciation": True,

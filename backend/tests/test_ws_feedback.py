@@ -215,3 +215,25 @@ def test_invalid_feedback_json_sends_nothing(
         events = _until(ws, "usage")
     assert not any(e["type"] == "feedback" for e in events)
     assert len(fake_llm.analyze_calls) == 1
+
+
+def test_set_ui_lang_switches_explanations_and_messages(
+    fb_client: TestClient, sync_engine: Engine, fake_llm: FakeLlm
+) -> None:
+    token = add_user(sync_engine, native="pl-PL")  # learns Portuguese
+    with fb_client.websocket_connect("/ws", headers={"origin": ORIGIN}) as ws:
+        ws.send_json({"type": "auth", "token": token})
+        assert ws.receive_json()["user"]["ui_lang"] == "pl-PL"
+        ws.receive_json()
+        ws.send_json({"type": "set_ui_lang", "ui_lang": "pt-BR"})
+        updated = _until(ws, "user_updated")[-1]
+        assert updated["user"]["ui_lang"] == "pt-BR"
+        assert updated["user"]["native_lang"] == "pl-PL"
+        ws.send_json({"type": "user_text", "text": "Eu gosta muito de praia."})
+        _until(ws, "feedback", "usage")
+        ws.send_json({"nonsense": 1})
+        error = _until(ws, "error")[-1]
+    assert "MUST be written in Brazilian Portuguese" in str(fake_llm.analyze_calls[-1]["system"])
+    assert error["message"] == "Mensagem inválida."  # server messages follow ui_lang too
+    with Session(sync_engine) as db:
+        assert db.scalars(select(User)).one().ui_lang == "pt-BR"

@@ -264,3 +264,18 @@ def test_oversized_utterance_is_rejected(voice_client: TestClient, sync_engine: 
         ws.send_json({"type": "start_of_speech", "mime": "audio/webm"})
         ws.send_bytes(b"x" * (ws_chat.MAX_UTTERANCE_BYTES + 1))
         assert ws.receive_json()["code"] == "bad_request"
+
+
+def test_stt_gets_the_last_ai_reply_as_context(
+    voice_client: TestClient, sync_engine: Engine, fake_llm: FakeLlm
+) -> None:
+    token = add_user(sync_engine)
+    with voice_client.websocket_connect("/ws", headers={"origin": ORIGIN}) as ws:
+        _login(ws, token)
+        _speak(ws)
+        _events_until(ws, "usage", "error")
+        _speak(ws)
+        _events_until(ws, "usage", "error")
+    first, second = fake_llm.transcribe_calls[:2]
+    assert "Context" not in str(first["system"])  # nothing said yet
+    assert f"«{REPLY}»" in str(second["system"])

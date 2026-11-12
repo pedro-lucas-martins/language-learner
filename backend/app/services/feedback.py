@@ -64,18 +64,30 @@ _PRON_FOCUS = {
 }
 
 
+# Style examples, by language learned → explanation language.
 _EXAMPLE_RULE = {
-    "pt-BR": "Depois de 'do', o substantivo vai para o genitivo: sklep → sklepu.",
-    "pl-PL": "Po 'gostar' zawsze jest przyimek 'de': gosto de café.",
+    "pl-PL": {
+        "pt-BR": "Depois de 'do', o substantivo vai para o genitivo: sklep → sklepu.",
+        "pl-PL": "Po 'do' rzeczownik jest w dopełniaczu: sklep → sklepu.",
+    },
+    "pt-BR": {
+        "pl-PL": "Po 'gostar' zawsze jest przyimek 'de': gosto de café.",
+        "pt-BR": "Depois de 'gostar' vem sempre a preposição 'de': gosto de café.",
+    },
 }
 
 
-def feedback_system_prompt(target_lang: str, native_lang: str, *, with_audio: bool) -> str:
+def feedback_system_prompt(
+    target_lang: str, native_lang: str, *, with_audio: bool, explain_lang: str | None = None
+) -> str:
+    """`explain_lang` (the learner's ui_lang) is the language of r/p/tip; default native."""
+    explain_code = explain_lang or native_lang
     target, native = LANG_NAMES[target_lang], LANG_NAMES[native_lang]
+    explain = LANG_NAMES[explain_code]
     lines = [
         f"You are a precise, kind {target} teacher. The learner's native language is {native}.",
         "Analyse ONLY the learner's message. Answer with one JSON object and nothing else.",
-        f"LANGUAGE: every explanation field (r, p, tip) MUST be written in {native}. Never "
+        f"LANGUAGE: every explanation field (r, p, tip) MUST be written in {explain}. Never "
         f"in English. Only the quoted {target} words themselves stay in {target}.",
         "",
         "GRAMMAR",
@@ -83,9 +95,9 @@ def feedback_system_prompt(target_lang: str, native_lang: str, *, with_audio: bo
         f"- Pay special attention to: {_GRAMMAR_FOCUS[target_lang]}.",
         '- "e": the wrong part, copied EXACTLY from the message (a substring).',
         '- "c": the corrected form of that part.',
-        f'- "r": the rule in one short sentence, written in {native}.',
-        f'- "p": a short {native}⇄{target} contrast tip written in {native}, or "".',
-        f'- Style example for "r": {_EXAMPLE_RULE[native_lang]!r}.',
+        f'- "r": the rule in one short sentence, written in {explain}.',
+        f'- "p": a short {native}⇄{target} contrast tip written in {explain}, or "".',
+        f'- Style example for "r": {_EXAMPLE_RULE[target_lang][explain_code]!r}.',
         "- Do not report punctuation, capitalization, accents left out when typing, informal "
         f"but correct style, or words the learner said in {native} on purpose.",
     ]
@@ -101,7 +113,7 @@ def feedback_system_prompt(target_lang: str, native_lang: str, *, with_audio: bo
             "- Only words that appear in the transcript. Never invent words.",
             '- "w": the word spelled correctly; "heard": an approximation of what was said, '
             "in Latin letters;",
-            f'  "tip": one practical articulation tip written in {native}.',
+            f'  "tip": one practical articulation tip written in {explain}.',
         ]
     lines += [
         "",
@@ -254,13 +266,16 @@ async def analyze(
     native_lang: str,
     budget_exceeded: bool,
     record: RecordFeedback,
+    explain_lang: str | None = None,
 ) -> FeedbackResult | None:
     """Run Track 2 once (one retry for transient errors). None = no usable feedback."""
     model = feedback_model(settings, budget_exceeded=budget_exceeded)
     if not model:
         return None
     with_audio = audio is not None
-    system = feedback_system_prompt(target_lang, native_lang, with_audio=with_audio)
+    system = feedback_system_prompt(
+        target_lang, native_lang, with_audio=with_audio, explain_lang=explain_lang
+    )
     prompt = feedback_user_prompt(text, with_audio=with_audio)
     for attempt in range(2):
         try:
@@ -299,8 +314,11 @@ class RetryResult(BaseModel):
     tip: str = Field(max_length=400)
 
 
-def retry_system_prompt(target_lang: str, native_lang: str, word: str) -> str:
+def retry_system_prompt(
+    target_lang: str, native_lang: str, word: str, explain_lang: str | None = None
+) -> str:
     target, native = LANG_NAMES[target_lang], LANG_NAMES[native_lang]
+    explain = LANG_NAMES[explain_lang or native_lang]
     return "\n".join(
         [
             f"You are a kind {target} pronunciation coach. The learner's native language is "
@@ -310,7 +328,7 @@ def retry_system_prompt(target_lang: str, native_lang: str, word: str) -> str:
             '- "better": true if it is pronounced clearly and acceptably for a learner (a slight '
             "accent is fine); false if the key sounds are still wrong, it is unclear, or a "
             "different word was said.",
-            f'- "tip": one short, encouraging sentence written in {native} (never in English): '
+            f'- "tip": one short, encouraging sentence written in {explain} (never in English): '
             "what to keep doing, or the one thing to change.",
             'Answer with JSON only: {"better": true, "tip": "..."}',
         ]
@@ -327,6 +345,7 @@ async def judge_retry(
     native_lang: str,
     budget_exceeded: bool,
     record: RecordFeedback,
+    explain_lang: str | None = None,
 ) -> tuple[RetryResult, LlmUsage, str] | None:
     """Returns (result, usage, model) or None when no usable answer came back."""
     model = feedback_model(settings, budget_exceeded=budget_exceeded)
@@ -336,7 +355,7 @@ async def judge_retry(
         try:
             raw, used = await llm.analyze(
                 model=model,
-                system=retry_system_prompt(target_lang, native_lang, word),
+                system=retry_system_prompt(target_lang, native_lang, word, explain_lang),
                 prompt=f'Target: "{word}"',
                 audio=audio,
                 max_output_tokens=300,

@@ -6,6 +6,7 @@ import {
   MAX_USER_TEXT,
   parseServerMsg,
   type ClientMsg,
+  type Lang,
   type Level,
   type ServerMsg,
 } from "../protocol.ts";
@@ -144,6 +145,7 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
     [send],
   );
   const speakWord = useCallback((word: string) => send({ type: "speak_word", word }), [send]);
+  const setUiLang = useCallback((uiLang: Lang) => send({ type: "set_ui_lang", ui_lang: uiLang }), [send]);
   const correctionsSeen = useCallback(() => dispatch({ type: "corrections_seen" }), []);
 
   const setLevel = useCallback((level: Level) => send({ type: "set_level", level }), [send]);
@@ -159,6 +161,7 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
     regrade,
     setRecast,
     speakWord,
+    setUiLang,
     correctionsSeen,
     setLevel,
     reconnect,

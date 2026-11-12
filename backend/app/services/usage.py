@@ -36,7 +36,7 @@ def _unit_price(settings: Settings, kind: str, role: str) -> float:
         if kind == "llm_in":
             return settings.price_stt_audio_input_per_m / per_m
         if kind == "llm_out":
-            return settings.price_utility_output_per_m / per_m
+            return settings.price_stt_output_per_m / per_m
         return 0.0
     if kind == "llm_in":
         price = (

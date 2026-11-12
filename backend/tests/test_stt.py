@@ -43,6 +43,13 @@ def test_prompt_demands_verbatim_in_both_directions() -> None:
     assert "learning Brazilian Portuguese" in pt and "native language is Polish" in pt
 
 
+def test_context_is_offered_without_licence_to_correct() -> None:
+    prompt = stt_system_prompt("pl-PL", "pt-BR", "Jak masz na imię?")
+    assert "«Jak masz na imię?»" in prompt
+    assert "keep every mistake" in prompt
+    assert "Context" not in stt_system_prompt("pl-PL", "pt-BR", None)
+
+
 def test_gemini_mime_strips_codec_parameters() -> None:
     assert gemini_mime("audio/webm;codecs=opus") == "audio/webm"
     assert gemini_mime("audio/MP4") == "audio/mp4"
@@ -54,8 +61,15 @@ async def test_transcribes_and_records_audio_seconds() -> None:
     assert result.text == "Ja mam dwa kot."  # kept verbatim, only quotes/space trimmed
     call = llm.transcribe_calls[0]
     assert call["model"] == "stt-model" and call["mime"] == "audio/webm"
+    assert call["thinking_level"] == ""
     assert record.rows[0][0] == "stt-model"
     assert record.rows[0][2] == 5.0  # 160 audio tokens / 32 per second
+
+
+async def test_stt_thinking_level_is_passed() -> None:
+    llm = FakeLlm()
+    await run(llm, Recorder(), gemini_stt_thinking_level="LOW")
+    assert llm.transcribe_calls[0]["thinking_level"] == "LOW"
 
 
 async def test_transient_error_is_retried_once() -> None:

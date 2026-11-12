@@ -38,8 +38,20 @@ class SttResult:
     seconds: float
 
 
-def stt_system_prompt(target_lang: str, native_lang: str) -> str:
+MAX_CONTEXT_CHARS = 400
+
+
+def stt_system_prompt(target_lang: str, native_lang: str, context: str | None = None) -> str:
+    """`context`: the friend's last message, which the speaker is probably answering."""
     target, native = LANG_NAMES[target_lang], LANG_NAMES[native_lang]
+    context_block = ""
+    if context and context.strip():
+        context_block = (
+            "\nContext: the speaker is probably answering this message from their friend: "
+            f"«{context.strip()[:MAX_CONTEXT_CHARS]}». Use it ONLY to recognise words that are "
+            "hard to hear (a beginner's accent). Never make the transcript closer to a correct "
+            "answer than what was actually said: keep every mistake.\n"
+        )
     return (
         f"You are a verbatim speech-to-text engine. The speaker is learning {target}; "
         f"their native language is {native}. They mostly speak {target} and may switch to "
@@ -52,7 +64,7 @@ def stt_system_prompt(target_lang: str, native_lang: str) -> str:
         "- If a word is unclear, write your best guess of what was actually pronounced.\n"
         "- Use normal punctuation and capitalization.\n"
         "- Output only the transcript: no quotes, labels, translations or comments.\n"
-        "- If there is no speech, output nothing."
+        "- If there is no speech, output nothing." + context_block
     )
 
 
@@ -80,11 +92,12 @@ async def transcribe(
     target_lang: str,
     native_lang: str,
     record: RecordStt,
+    context: str | None = None,
 ) -> SttResult:
     model = settings.gemini_stt_model
     if not model:
         raise SttError("not_configured", "GEMINI_STT_MODEL is empty")
-    system = stt_system_prompt(target_lang, native_lang)
+    system = stt_system_prompt(target_lang, native_lang, context)
     last: LlmError | None = None
     for attempt in range(2):
         try:
@@ -95,6 +108,7 @@ async def transcribe(
                 audio=audio,
                 mime=gemini_mime(mime),
                 max_output_tokens=STT_MAX_OUTPUT_TOKENS,
+                thinking_level=settings.gemini_stt_thinking_level,
             )
         except LlmError as exc:
             last = exc
