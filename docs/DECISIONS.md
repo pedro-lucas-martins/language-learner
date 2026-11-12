@@ -133,6 +133,11 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Thinking indicator:** the reducer tracks `phase` (`transcribing` after a voice message is sent, `thinking` after the transcript, `idle` once the reply starts streaming or on error). Animated dots "Transcrevendo…" on the learner's side and "Pensando…" on the AI's side; respects `prefers-reduced-motion`.
 - **Consequence:** SPEC §9 still asks for light/dark — both exist, light is the default. The full responsive shell remains slice 5.
 
+## 020 — Active TTS switched to ElevenLabs (2026-11-12)
+- **Context:** after hearing it in the app, the author chose to keep the ElevenLabs voice (supersedes the choice in 011).
+- **Decision:** `TTS_PROVIDER=elevenlabs`, Flash v2.5, premade voices Sarah/George (the Free plan cannot use native library voices through the API). `TTS_MONTHLY_CHARS=10000` (the Free allowance), so at 95% the app moves to edge-tts by itself and never needs a paid overage.
+- **Consequence:** on the Free plan only a few replies per month use ElevenLabs (≈8,800 of 10,000 characters were spent on 2026-11-12, mostly by the benchmark); after that edge-tts speaks until the allowance resets. Regular daily use needs a paid ElevenLabs plan — then raise `TTS_MONTHLY_CHARS` to the plan's characters, set `PRICE_TTS_PER_1K_CHARS`, and native voices become available. Google stays configured as an alternative (`TTS_PROVIDER=google`).
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |
@@ -150,5 +155,5 @@ Short records: context → decision → consequence. Newest at the bottom.
 | `GEMINI_UTILITY_MODEL` | `gemini-3.1-flash-lite` | US$ 0.25 in (0.50 audio) / 1.50 out per 1M | 2026-11-12 |
 | `GEMINI_STT_MODEL` | `gemini-3.8-flash` (thinking LOW), was `gemini-3.5-flash-lite` | US$ 0.75 in / 3.75 out per 1M until 2026-12-31, then 1.50 / 7.50 | 2026-11-12 |
 | `GEMINI_FEEDBACK_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (text/audio) / 2.50 out per 1M | 2026-11-12 |
-| `TTS_PROVIDER` (after benchmark) | `google` | free tier 1M chars/month | 2026-11-12 |
+| `TTS_PROVIDER` (after benchmark) | `elevenlabs` (was `google`, see 020) | Free plan, 10,000 chars/month | 2026-11-12 |
 | TTS model / plan | Chirp 3 HD, voices Kore (F) and Charon (M), OGG_OPUS | free tier (`TTS_MONTHLY_CHARS=1000000`, `PRICE_TTS_PER_1K_CHARS=0`) | 2026-11-12 |

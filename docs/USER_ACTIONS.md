@@ -108,6 +108,16 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
 - [ ] Se for um plano pago (ElevenLabs), deixar **desligada** a cobrança por excedente, se o plano oferecer.
 - [x] Anotar resultado e escolha em `docs/DECISIONS.md`.
 
+## Voz atual: ElevenLabs (plano Free)
+
+- [ ] O plano Free dá ~10.000 caracteres por mês; ao chegar em 95% o app troca sozinho para a voz reserva
+      (aviso "Voz reserva em uso" no rodapé). A cota renova todo mês.
+- [ ] Para uso diário, assine um plano pago do ElevenLabs e depois ajuste no `.env`: `TTS_MONTHLY_CHARS`
+      (caracteres do plano) e `PRICE_TTS_PER_1K_CHARS`. Deixe **desligada** a cobrança por excedente, se existir.
+      Com plano pago dá para usar vozes nativas da biblioteca (`ELEVENLABS_VOICES_PL/PT`).
+- [ ] Para voltar ao Google (grátis até 1M caracteres/mês): `TTS_PROVIDER=google` e `TTS_MONTHLY_CHARS=1000000`,
+      depois `docker compose up -d backend`.
+
 ## Fatia 6 (deploy) — detalhado depois
 
 Contas gratuitas em Supabase, Render e Vercel.
