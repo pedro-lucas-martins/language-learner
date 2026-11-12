@@ -85,6 +85,19 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
       local de desenvolvimento) e faça login com o token.
 - [ ] Para voltar ao normal: Ctrl+C no `dev:lan` e `docker compose start frontend`.
 
+## Fatia 3 — testar correções e flashcards
+
+- [ ] Abra http://localhost:5173 e fale ou escreva frases **com erros** (3 palavras ou mais). As correções
+      aparecem no painel à direita (no celular: botão 📝 com o número de correções novas), explicadas na sua
+      língua materna.
+- [ ] Toque numa mensagem sua para **corrigir a transcrição**; ao salvar, a gramática é verificada de novo.
+- [ ] Em itens de pronúncia: ▶ ouve a palavra certa, 0.8× mais devagar, e **segure 🎙** para tentar de novo.
+- [ ] Aba **Flashcards**: revise os cartões (Errei/Difícil/Bom/Fácil). Errou? O cartão volta em 10 minutos.
+- [ ] O botão **Eco de pronúncia** no topo liga/desliga o recast (a IA repete certo, sem explicar, a palavra
+      que você pronunciou errado).
+- [ ] Para testar a direção PL→PT, entre com o usuário **Aluno PL** (token em `~/language-learner-token-pl.txt`;
+      guarde no gerenciador de senhas e apague o arquivo).
+
 ## Depois do benchmark
 
 - [x] Ouvir a comparação às cegas (`bench_results/<data>/index.html`) e ver a latência no `report.md`.

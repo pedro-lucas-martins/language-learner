@@ -54,6 +54,8 @@ export interface ChatState {
   feedback: Record<string, Feedback>;
   /** Last pron_retry verdict per "messageId|word". */
   pronResults: Record<string, { better: boolean; tip: string }>;
+  /** Corrections with mistakes that arrived since the panel was last looked at. */
+  unseenCorrections: number;
 }
 
 export type ChatAction =
@@ -61,7 +63,10 @@ export type ChatAction =
   | { type: "server"; msg: ServerMsg }
   | { type: "closed"; code: number }
   | { type: "sent" }
-  | { type: "dismiss_error" };
+  | { type: "dismiss_error" }
+  /** The learner fixed a transcript (a regrade follows). */
+  | { type: "edit_message"; id: string; text: string }
+  | { type: "corrections_seen" };
 
 export const initialChatState: ChatState = {
   status: "connecting",
@@ -74,6 +79,7 @@ export const initialChatState: ChatState = {
   metrics: null,
   feedback: {},
   pronResults: {},
+  unseenCorrections: 0,
 };
 
 function finishStreaming(messages: ChatMessage[]): ChatMessage[] {
@@ -106,6 +112,15 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
     case "dismiss_error":
       return { ...state, error: null };
+
+    case "edit_message":
+      return {
+        ...state,
+        messages: state.messages.map((m) => (m.id === action.id ? { ...m, text: action.text } : m)),
+      };
+
+    case "corrections_seen":
+      return { ...state, unseenCorrections: 0 };
 
     case "server":
       return applyServerMsg(state, action.msg);
@@ -186,6 +201,7 @@ function applyServerMsg(state: ChatState, msg: ServerMsg): ChatState {
     case "feedback":
       return {
         ...state,
+        unseenCorrections: state.unseenCorrections + (msg.ok ? 0 : 1),
         feedback: {
           ...state.feedback,
           [msg.message_id]: { source: msg.source, ok: msg.ok, errs: msg.errs, pron: msg.pron },

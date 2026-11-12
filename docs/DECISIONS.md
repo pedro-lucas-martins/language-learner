@@ -97,6 +97,13 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Real check (2026-11-12, synthetic clips):** "também" said by a Polish edge-tts voice → `better: false` with a tip about the nasal ending, in Polish; by a Brazilian voice → `better: true`.
 - **Test harness:** the server closes a session after the client disconnects; the test clients now wait for that before stopping their event loop, and a thread hitting a closed loop is now a test error (it was an intermittent warning).
 
+## 016 — Slice 3c: corrections panel and review UI (2026-11-12)
+- **Panel:** tabs Corrections / Flashcards; a fixed side column from 1024 px, a bottom sheet with a badge below that (chosen by the author). The badge counts feedback with mistakes not yet seen; on desktop the panel is always visible, so nothing is counted. Full responsive shell stays in slice 5.
+- **Transcript editing:** tapping one of the learner's messages opens an inline editor; saving updates it locally and sends `regrade` (grammar only).
+- **Word audio:** ▶ replays `word:<w>` audio already received, or sends `speak_word`; 0.8× is enabled once the audio is on the client (`playbackRate`, no new synthesis). 🎙 records while held (hands-free VAD paused) and sends `pron_retry` with the message or card id; the verdict shows under the word.
+- **Recast switch** in the header sends `set_recast`.
+- **Flashcards UI** uses the REST client (`api.ts`): due cards, show answer, grades Again/Hard/Good/Easy = 1/3/4/5, delete. The LAN proxy also forwards `/flashcards`.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |

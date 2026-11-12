@@ -106,9 +106,62 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
 
   const interrupt = useCallback(() => send({ type: "user_started_speaking" }), [send]);
 
+  /** 🎙 try again: one recorded word, judged by the server (pron_result). */
+  const sendPronRetry = useCallback(
+    async (blob: Blob, word: string, messageId: string): Promise<boolean> => {
+      const socket = socketRef.current;
+      if (!socket || socket.readyState !== WebSocket.OPEN || blob.size === 0) return false;
+      const data = await blob.arrayBuffer();
+      const mime = (blob.type || "audio/webm").slice(0, MAX_MIME);
+      const start: ClientMsg = {
+        type: "start_of_speech",
+        mime,
+        purpose: "pron_retry",
+        target_word: word,
+        message_id: messageId,
+      };
+      if (!send(start)) return false;
+      socket.send(data);
+      send({ type: "end_of_speech" });
+      return true;
+    },
+    [send],
+  );
+
+  const regrade = useCallback(
+    (messageId: string, text: string): boolean => {
+      const trimmed = text.trim().slice(0, MAX_USER_TEXT);
+      if (!trimmed) return false;
+      const ok = send({ type: "regrade", message_id: messageId, text: trimmed });
+      if (ok) dispatch({ type: "edit_message", id: messageId, text: trimmed });
+      return ok;
+    },
+    [send],
+  );
+
+  const setRecast = useCallback(
+    (enabled: boolean) => send({ type: "set_recast", enabled }),
+    [send],
+  );
+  const speakWord = useCallback((word: string) => send({ type: "speak_word", word }), [send]);
+  const correctionsSeen = useCallback(() => dispatch({ type: "corrections_seen" }), []);
+
   const setLevel = useCallback((level: Level) => send({ type: "set_level", level }), [send]);
   const reconnect = useCallback(() => setAttempt((n) => n + 1), []);
   const dismissError = useCallback(() => dispatch({ type: "dismiss_error" }), []);
 
-  return { state, sendText, sendUtterance, interrupt, setLevel, reconnect, dismissError };
+  return {
+    state,
+    sendText,
+    sendUtterance,
+    sendPronRetry,
+    interrupt,
+    regrade,
+    setRecast,
+    speakWord,
+    correctionsSeen,
+    setLevel,
+    reconnect,
+    dismissError,
+  };
 }

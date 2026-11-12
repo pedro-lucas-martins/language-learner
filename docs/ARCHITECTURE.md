@@ -2,7 +2,7 @@
 
 Describes what exists **now**. Target design lives in [`SPEC.md`](SPEC.md).
 
-_Last updated: slice 3b (feedback, flashcards and listen-and-repeat on the backend; panel UI in 3c)._
+_Last updated: slice 3 (feedback, recast, regrade, flashcards and listen-and-repeat, backend and UI)._
 
 ## Overview
 
@@ -121,9 +121,15 @@ The spend estimate multiplies summed usage by the `PRICE_*` settings.
 | `src/audio/vad.ts` | Volume VAD: pure detector (calibration, silence, discard) + mic monitor |
 | `src/audio/assembler.ts` | Joins `audio_meta` + binary frames into complete sentences |
 | `src/audio/player.ts` | Sentence queue on one `<audio>`, autoplay unlock, replay 1×/0.8×, speechSynthesis fallback |
+| `src/api.ts` | REST client: due flashcards, review (grade names → SM-2), delete |
+| `src/chat/corrections.ts` | Pure helpers: corrections list (newest first), «marked» card fronts |
+| `src/components/FeedbackPanel.tsx` | Tabs Corrections / Flashcards (side column ≥ 1024 px, sheet below) |
+| `src/components/CorrectionItem.tsx` | One message's grammar and pronunciation feedback |
+| `src/components/WordPractice.tsx` | ▶ 1× / 0.8× and 🎙 hold-to-retry for one word, with the verdict |
+| `src/components/FlashcardReview.tsx` | Review due cards: flip, grade, delete |
 | `src/components/MicButton.tsx` | Tap = hands-free on/off, hold = push-to-talk |
 | `src/components/LoginScreen.tsx` | Token login (language guessed from the browser) |
-| `src/components/ChatScreen.tsx` | Chat, mic, replay buttons, voice status, metrics and spend lines |
+| `src/components/ChatScreen.tsx` | Chat, mic, replay, editable transcripts, recast switch, panel/sheet, metrics |
 
 ## Tests
 
@@ -132,7 +138,8 @@ The spend estimate multiplies summed usage by the `PRICE_*` settings.
   and end-to-end WebSocket tests (origin, auth, streaming, persistence, summary, level,
   errors, daily cap, provider down, missing configuration).
 - CI also applies the migrations to a real Postgres and runs `alembic check`.
-- Frontend (vitest): reducer (incl. metrics, interrupted), frame parser, i18n key parity,
+- Frontend (vitest): reducer (incl. metrics, interrupted, feedback, unseen badge, edits,
+  pron results), corrections helpers, REST client (mocked fetch), frame parser, i18n key parity,
   language detection, sentence assembler, VAD decisions, recorder MIME choice.
 - `npm run dev:lan`: HTTPS + proxy for testing on a phone (see `docs/USER_ACTIONS.md`).
 

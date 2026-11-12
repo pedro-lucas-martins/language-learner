@@ -214,6 +214,38 @@ export function useVoice({ audioRef, busy, lastAiMessageId, sendUtterance, inter
     await finishUtterance();
   }, [finishUtterance, startHandsFree, stopHandsFree]);
 
+  /** 🎙 try again: record one word while the button is held (hands-free VAD is paused). */
+  const startClip = useCallback(async (): Promise<boolean> => {
+    playerRef.current?.unlock();
+    if (!(await ensureMic())) return false;
+    const recorder = recorderRef.current;
+    if (!recorder) return false;
+    playerRef.current?.stop();
+    monitorRef.current?.reset();
+    if (recorder.recording) recorder.cancel();
+    pressedAt.current = performance.now();
+    recorder.start();
+    setRecording(true);
+    return true;
+  }, [ensureMic]);
+
+  const finishClip = useCallback(async (): Promise<Blob | null> => {
+    pressedAt.current = null;
+    setRecording(false);
+    const blob = (await recorderRef.current?.stop()) ?? null;
+    return blob && blob.size >= MIN_UTTERANCE_BYTES / 3 ? blob : null;
+  }, []);
+
+  /** ▶ for a word: replay what was received, or null when it has to be fetched first. */
+  const playWord = useCallback((word: string, rate = 1): boolean => {
+    const player = playerRef.current;
+    const key = `word:${word}`;
+    if (!player?.has(key)) return false;
+    player.unlock();
+    player.replay(key, rate);
+    return true;
+  }, []);
+
   const unlock = useCallback(() => playerRef.current?.unlock(), []);
   const replay = useCallback((messageId: string, rate = 1) => {
     playerRef.current?.unlock();
@@ -247,5 +279,8 @@ export function useVoice({ audioRef, busy, lastAiMessageId, sendUtterance, inter
     replay,
     hasAudio,
     stopSpeaking,
+    startClip,
+    finishClip,
+    playWord,
   };
 }

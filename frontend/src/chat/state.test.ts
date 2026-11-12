@@ -133,4 +133,40 @@ describe("chatReducer", () => {
     s = apply(s, { ...first, source: "text", ok: true, errs: [] });
     expect(s.feedback.u1).toEqual({ source: "text", ok: true, errs: [], pron: [] });
   });
+
+  it("counts unseen corrections with mistakes until the panel is seen", () => {
+    const base = {
+      type: "feedback" as const,
+      source: "text" as const,
+      errs: [],
+      pron: [],
+    };
+    let s = apply(
+      initialChatState,
+      { ...base, message_id: "u1", ok: false },
+      { ...base, message_id: "u2", ok: true },
+      { ...base, message_id: "u3", ok: false },
+    );
+    expect(s.unseenCorrections).toBe(2);
+    s = chatReducer(s, { type: "corrections_seen" });
+    expect(s.unseenCorrections).toBe(0);
+  });
+
+  it("edits a transcript locally before the regrade", () => {
+    let s = apply(initialChatState, { type: "transcript", message_id: "u1", text: "Ja mam dwa kot" });
+    s = chatReducer(s, { type: "edit_message", id: "u1", text: "Ja mam dwa koty" });
+    expect(s.messages[0]?.text).toBe("Ja mam dwa koty");
+  });
+
+  it("keeps the last pron_result per message and word", () => {
+    const s = apply(initialChatState, {
+      type: "pron_result",
+      message_id: "u1",
+      word: "łóżko",
+      better: true,
+      tip: "Bom!",
+    });
+    expect(s.pronResults["u1|łóżko"]).toEqual({ better: true, tip: "Bom!" });
+  });
 });
+
