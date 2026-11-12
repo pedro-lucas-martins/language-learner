@@ -1,4 +1,4 @@
-"""Shared fixtures. Tests use SQLite and FakeLlm — never Postgres or a real provider."""
+"""Shared fixtures. Tests use SQLite, FakeLlm and FakeTts — never Postgres or a real provider."""
 
 from collections.abc import Iterator
 from pathlib import Path
@@ -18,6 +18,8 @@ from app.main import app
 from app.models import User
 from app.services.auth import generate_token, hash_token
 from app.services.llm import FakeLlm
+from app.services.tts.chain import TtsChain
+from tests.fakes_tts import FakeTts, MemoryCache
 
 ORIGIN = "http://localhost:5173"
 
@@ -72,6 +74,15 @@ def add_user(
         )
         db.commit()
     return token
+
+
+@pytest.fixture(autouse=True)
+def fake_tts() -> Iterator[TtsChain]:
+    """Installed for every test so the app never builds a real (networked) TTS chain."""
+    chain = TtsChain(FakeTts("google"), FakeTts("edge"), cache=MemoryCache(), retry_delay_s=0)
+    app.state.tts = chain
+    yield chain
+    app.state.tts = None
 
 
 @pytest.fixture

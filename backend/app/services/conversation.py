@@ -1,15 +1,22 @@
-"""One live conversation over a WebSocket (SPEC §4). Text-only in slice 1.
+"""One live conversation over a WebSocket (SPEC §4, §6).
 
 The orchestrator owns the in-memory window, persists messages, calls the LLM with
-fallback, tracks usage and enforces caps. It never touches the WebSocket directly:
-it emits protocol messages through `send`.
+fallback, turns the reply into speech sentence by sentence, tracks usage and enforces
+caps. It never touches the WebSocket directly: it emits protocol messages through
+`send` and audio through `send_audio`.
+
+Each turn runs as its own task so the socket keeps reading: a new utterance, a typed
+message or `user_started_speaking` cancels the running turn (barge-in).
 """
 
 import asyncio
+import contextlib
 import logging
+import time
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Coroutine
 from dataclasses import dataclass
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -20,8 +27,12 @@ from app.models import ChatSession, Message, User, utcnow
 from app.protocol import (
     AiTextDeltaMsg,
     AiTextDoneMsg,
+    AudioMetaMsg,
     ErrorMsg,
+    InterruptedMsg,
+    MetricsMsg,
     TranscriptMsg,
+    TtsFallbackMsg,
     UsageMsg,
     UserInfo,
     UserUpdatedMsg,
@@ -43,10 +54,14 @@ from app.services.prompts import (
     summary_user_prompt,
     truncate_words,
 )
+from app.services.sentence_buffer import SentenceBuffer
+from app.services.stt_service import SttError, estimate_seconds, transcribe
+from app.services.tts.chain import TtsChain, TtsChunk, TtsUnavailable
 
 log = logging.getLogger(__name__)
 
 Send = Callable[[BaseModel], Awaitable[None]]
+SendAudio = Callable[[AudioMetaMsg, bytes], Awaitable[None]]
 
 CHAT_MAX_OUTPUT_TOKENS = 400  # the prompt keeps replies short; this only guards runaway output
 CHAT_TEMPERATURE = 0.8
@@ -64,6 +79,7 @@ class Learner:
     level: str
     user_facts: str
     recast_pronunciation: bool
+    voice_id: str | None = None
 
     @classmethod
     def from_model(cls, user: User) -> "Learner":
@@ -75,6 +91,7 @@ class Learner:
             level=user.level,
             user_facts=user.user_facts,
             recast_pronunciation=user.recast_pronunciation,
+            voice_id=user.voice_id,
         )
 
     def info(self) -> UserInfo:
@@ -87,6 +104,24 @@ class Learner:
         )
 
 
+def _ms(since: float) -> int:
+    return round((time.perf_counter() - since) * 1000)
+
+
+@dataclass
+class Timings:
+    """Per-turn latency, measured from end_of_speech / user_text (SPEC §6)."""
+
+    started: float
+    stt_ms: int | None = None
+    llm_first_token_ms: int | None = None
+    first_audio_ms: int | None = None
+
+
+async def _no_audio(meta: AudioMetaMsg, data: bytes) -> None:
+    """Used when no audio sink is given (e.g. scripts)."""
+
+
 class Conversation:
     def __init__(
         self,
@@ -96,22 +131,35 @@ class Conversation:
         settings: Settings,
         llm: LlmProvider,
         send: Send,
+        tts: TtsChain | None = None,
+        send_audio: SendAudio = _no_audio,
     ) -> None:
         self.learner = learner
         self.session_id = session_id
         self.settings = settings
         self.llm = llm
         self.send = send
+        self.tts = tts
+        self.send_audio = send_audio
         self.memory = ConversationMemory(
             window_turns=settings.window_turns, summary_batch_turns=settings.summary_batch_turns
         )
         self._background: set[asyncio.Task[None]] = set()
+        self._turn: asyncio.Task[None] | None = None
+        self._turn_ai_id: uuid.UUID | None = None
 
     # --- lifecycle --------------------------------------------------------------
 
     @classmethod
     async def start(
-        cls, *, user: User, settings: Settings, llm: LlmProvider, send: Send
+        cls,
+        *,
+        user: User,
+        settings: Settings,
+        llm: LlmProvider,
+        send: Send,
+        tts: TtsChain | None = None,
+        send_audio: SendAudio = _no_audio,
     ) -> "Conversation":
         async with session_factory()() as db:
             chat = ChatSession(user_id=user.id, running_summary="")
@@ -124,9 +172,12 @@ class Conversation:
             settings=settings,
             llm=llm,
             send=send,
+            tts=tts,
+            send_audio=send_audio,
         )
 
     async def close(self) -> None:
+        await self._cancel_turn()
         if self._background:
             await asyncio.wait(self._background, timeout=10)
         async with session_factory()() as db:
@@ -143,16 +194,26 @@ class Conversation:
             ErrorMsg(code=wire_code(key), message=error_text(self.learner.native_lang, key))
         )
 
-    async def _send_usage(self) -> usage_svc.UsageSnapshot:
+    async def _snapshot(self) -> usage_svc.UsageSnapshot:
         async with session_factory()() as db:
-            snap = await usage_svc.snapshot(db, self.settings, self.learner.id)
+            return await usage_svc.snapshot(db, self.settings, self.learner.id)
+
+    def _tts_provider_active(self, snap: usage_svc.UsageSnapshot) -> str:
+        if self.tts is None:
+            return "browser"
+        if self.tts.active is None or snap.tts_over_allowance:
+            return self.tts.fallback.name
+        return self.tts.active.name
+
+    async def _send_usage(self) -> usage_svc.UsageSnapshot:
+        snap = await self._snapshot()
         await self.send(
             UsageMsg(
                 month_usd_est=snap.month_usd_est,
                 budget_usd=snap.budget_usd,
                 tts_chars_month=snap.tts_chars_month,
                 tts_chars_allowance=snap.tts_chars_allowance,
-                tts_provider_active=snap.tts_provider_active,
+                tts_provider_active=self._tts_provider_active(snap),
             )
         )
         return snap
@@ -173,34 +234,226 @@ class Conversation:
         self.learner.level = level
         await self.send(UserUpdatedMsg(user=self.learner.info()))
 
+    # --- turns (each one is a cancellable task) -----------------------------------------
+
+    async def submit_text(self, text: str) -> None:
+        await self.interrupt()
+        self._launch(self._text_turn(text, Timings(time.perf_counter())))
+
+    async def submit_utterance(self, audio: bytes, mime: str) -> None:
+        await self.interrupt()
+        self._launch(self._voice_turn(audio, mime, Timings(time.perf_counter())))
+
+    async def interrupt(self) -> None:
+        """Barge-in: stop the running turn (LLM and TTS) and tell the client."""
+        ai_id = self._turn_ai_id
+        if await self._cancel_turn() and ai_id is not None:
+            await self.send(InterruptedMsg(message_id=str(ai_id)))
+
+    async def wait_idle(self) -> None:
+        """Wait for the running turn to finish (scripts and tests)."""
+        if self._turn is not None:
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._turn
+
+    def _launch(self, coro: Coroutine[Any, Any, None]) -> None:
+        self._turn = asyncio.create_task(self._guarded(coro))
+
+    async def _cancel_turn(self) -> bool:
+        task = self._turn
+        if task is None or task.done():
+            return False
+        task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await task
+        return True
+
+    async def _guarded(self, coro: Coroutine[Any, Any, None]) -> None:
+        """A failing turn must never take the WebSocket down."""
+        try:
+            await coro
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.exception("Turn failed")
+            with contextlib.suppress(Exception):
+                await self._error("provider_unavailable")
+        finally:
+            self._turn_ai_id = None
+
     async def handle_user_text(self, text: str) -> None:
+        """Run a typed turn to completion (kept for callers that do not need barge-in)."""
+        await self._text_turn(text, Timings(time.perf_counter()))
+
+    async def _text_turn(self, text: str, timings: Timings) -> None:
         text = text.strip()
         if not text:
             await self._error("bad_request")
             return
-
-        async with session_factory()() as db:
-            snap = await usage_svc.snapshot(db, self.settings, self.learner.id)
+        snap = await self._snapshot()
         if snap.daily_cap_reached:
             await self._error("quota_exceeded")
             return
+        await self._respond(text, snap, timings)
 
+    async def _voice_turn(self, audio: bytes, mime: str, timings: Timings) -> None:
+        snap = await self._snapshot()
+        if snap.daily_cap_reached or snap.stt_cap_reached(estimate_seconds(len(audio), mime)):
+            await self._error("quota_exceeded")
+            return
+        try:
+            result = await transcribe(
+                self.llm,
+                self.settings,
+                audio=audio,
+                mime=mime,
+                target_lang=self.learner.target_lang,
+                native_lang=self.learner.native_lang,
+                record=self._record_stt,
+            )
+        except SttError as exc:
+            await self._error("not_configured" if exc.code == "not_configured" else "stt_failed")
+            return
+        timings.stt_ms = _ms(timings.started)
+        await self._respond(result.text, snap, timings)
+
+    async def _respond(self, text: str, snap: usage_svc.UsageSnapshot, timings: Timings) -> None:
         user_msg_id = await self._persist(role="user", text=text)
         await self.send(TranscriptMsg(message_id=str(user_msg_id), text=text))
 
         ai_msg_id = uuid.uuid4()
-        reply = await self._stream_reply(text, ai_msg_id, budget_exceeded=snap.budget_exceeded)
+        self._turn_ai_id = ai_msg_id
+        sentences: asyncio.Queue[str | None] = asyncio.Queue()
+        speaker = (
+            asyncio.create_task(
+                self._speak(ai_msg_id, sentences, timings, over=snap.tts_over_allowance)
+            )
+            if self.tts is not None
+            else None
+        )
+        buffer = SentenceBuffer()
+        parts: list[str] = []
+
+        def on_delta(delta: str) -> None:
+            parts.append(delta)
+            for sentence in buffer.push(delta):
+                sentences.put_nowait(sentence)
+
+        try:
+            reply = await self._stream_reply(
+                text,
+                ai_msg_id,
+                budget_exceeded=snap.budget_exceeded,
+                on_delta=on_delta,
+                timings=timings,
+            )
+        except asyncio.CancelledError:
+            if speaker is not None:
+                speaker.cancel()
+            await self._keep_partial(text, "".join(parts), ai_msg_id)
+            raise
         if reply is None:
+            if speaker is not None:
+                speaker.cancel()
             return
+
+        rest = buffer.flush()
+        if rest:
+            sentences.put_nowait(rest)
+        sentences.put_nowait(None)
 
         await self._persist(role="ai", text=reply, message_id=ai_msg_id)
         await self.send(AiTextDoneMsg(message_id=str(ai_msg_id), text=reply))
         self.memory.add_turn(text, reply)
         self._maybe_summarize()
+
+        if speaker is not None:
+            try:
+                await speaker
+            except asyncio.CancelledError:
+                speaker.cancel()
+                raise
+        await self.send(
+            MetricsMsg(
+                message_id=str(ai_msg_id),
+                stt_ms=timings.stt_ms,
+                llm_first_token_ms=timings.llm_first_token_ms,
+                first_audio_ms=timings.first_audio_ms,
+                total_ms=_ms(timings.started),
+            )
+        )
         await self._send_usage()
 
+    async def _keep_partial(self, user_text: str, partial: str, ai_msg_id: uuid.UUID) -> None:
+        """An interrupted reply still happened: keep what was said so far in the history."""
+        partial = partial.strip()
+        if not partial:
+            return
+        await self._persist(role="ai", text=partial, message_id=ai_msg_id)
+        self.memory.add_turn(user_text, partial)
+        self._maybe_summarize()
+
+    async def _speak(
+        self,
+        ai_msg_id: uuid.UUID,
+        sentences: "asyncio.Queue[str | None]",
+        timings: Timings,
+        *,
+        over: bool,
+    ) -> None:
+        """Synthesize sentences in order. Each binary frame follows one audio_meta."""
+        assert self.tts is not None
+        lang = self.learner.target_lang
+        index = 0
+        seq = 0
+        while (sentence := await sentences.get()) is not None:
+            held: TtsChunk | None = None
+            try:
+                async for chunk in self.tts.stream(
+                    sentence,
+                    lang,
+                    self.learner.voice_id,  # type: ignore[arg-type]
+                    record=self._record_tts,
+                    over_allowance=over,
+                ):
+                    if timings.first_audio_ms is None:
+                        timings.first_audio_ms = _ms(timings.started)
+                    if held is not None:
+                        await self._send_chunk(ai_msg_id, seq, index, held, final=False)
+                        seq += 1
+                    held = chunk  # keep one back so the last chunk can carry final=true
+            except TtsUnavailable:
+                held = None
+            if held is not None:
+                await self._send_chunk(ai_msg_id, seq, index, held, final=True)
+                seq += 1
+            else:
+                await self.send(
+                    TtsFallbackMsg(
+                        message_id=str(ai_msg_id),
+                        sentence=index,
+                        text=sentence,
+                        lang=lang,  # type: ignore[arg-type]
+                    )
+                )
+            index += 1
+
+    async def _send_chunk(
+        self, ai_msg_id: uuid.UUID, seq: int, sentence: int, chunk: TtsChunk, *, final: bool
+    ) -> None:
+        meta = AudioMetaMsg(
+            message_id=str(ai_msg_id), seq=seq, sentence=sentence, mime=chunk.mime, final=final
+        )
+        await self.send_audio(meta, chunk.data)
+
     async def _stream_reply(
-        self, text: str, ai_msg_id: uuid.UUID, *, budget_exceeded: bool
+        self,
+        text: str,
+        ai_msg_id: uuid.UUID,
+        *,
+        budget_exceeded: bool,
+        on_delta: Callable[[str], None] | None = None,
+        timings: Timings | None = None,
     ) -> str | None:
         system = chat_system_prompt(
             target_lang=self.learner.target_lang,
@@ -226,7 +479,11 @@ class Conversation:
                 temperature=CHAT_TEMPERATURE,
             ):
                 if isinstance(event, TextDelta):
+                    if timings is not None and timings.llm_first_token_ms is None:
+                        timings.llm_first_token_ms = _ms(timings.started)
                     parts.append(event.text)
+                    if on_delta is not None:
+                        on_delta(event.text)
                     await self.send(AiTextDeltaMsg(message_id=str(ai_msg_id), delta=event.text))
                 elif isinstance(event, StreamEnd):
                     await self._record_llm(choice.role, choice.model, event.usage)
@@ -262,6 +519,18 @@ class Conversation:
         async with session_factory()() as db:
             await usage_svc.record_llm(
                 db, user_id=self.learner.id, role=role, model=model, usage=usage
+            )
+
+    async def _record_stt(self, model: str, usage: LlmUsage, seconds: float) -> None:
+        async with session_factory()() as db:
+            await usage_svc.record_stt(
+                db, user_id=self.learner.id, model=model, usage=usage, seconds=seconds
+            )
+
+    async def _record_tts(self, provider: str, model: str, chars: int) -> None:
+        async with session_factory()() as db:
+            await usage_svc.record_tts(
+                db, user_id=self.learner.id, provider=provider, model=model, chars=chars
             )
 
     # --- running summary (SPEC §4.2) ---------------------------------------------------

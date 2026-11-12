@@ -33,6 +33,8 @@ class LlmError(Exception):
 class LlmUsage:
     input_tokens: int = 0
     output_tokens: int = 0
+    audio_tokens: int = 0
+    """Part of `input_tokens` that was audio (Gemini counts 32 tokens per second)."""
 
 
 @dataclass(frozen=True)
@@ -70,6 +72,19 @@ class LlmProvider(Protocol):
         max_output_tokens: int,
         temperature: float,
     ) -> tuple[str, LlmUsage]: ...
+
+    async def transcribe(
+        self,
+        *,
+        model: str,
+        system: str,
+        instruction: str,
+        audio: bytes,
+        mime: str,
+        max_output_tokens: int,
+    ) -> tuple[str, LlmUsage]:
+        """Speech-to-text with temperature 0 (SPEC §5). Raise LlmError on failure."""
+        ...
 
 
 # --- Gemini -------------------------------------------------------------------
@@ -119,7 +134,16 @@ class GeminiProvider:
         if metadata is None:
             return LlmUsage()
         output = (metadata.candidates_token_count or 0) + (metadata.thoughts_token_count or 0)
-        return LlmUsage(input_tokens=metadata.prompt_token_count or 0, output_tokens=output)
+        audio = sum(
+            detail.token_count or 0
+            for detail in (metadata.prompt_tokens_details or [])
+            if str(getattr(detail.modality, "value", detail.modality)).upper() == "AUDIO"
+        )
+        return LlmUsage(
+            input_tokens=metadata.prompt_token_count or 0,
+            output_tokens=output,
+            audio_tokens=audio,
+        )
 
     @staticmethod
     def _map_error(exc: Exception) -> LlmError:
@@ -188,6 +212,40 @@ class GeminiProvider:
                     model=model,
                     contents=prompt,
                     config=self._config(system, max_output_tokens, temperature),
+                )
+        except Exception as exc:  # noqa: BLE001
+            raise self._map_error(exc) from exc
+        return (response.text or "").strip(), self._usage(response.usage_metadata)
+
+    async def transcribe(
+        self,
+        *,
+        model: str,
+        system: str,
+        instruction: str,
+        audio: bytes,
+        mime: str,
+        max_output_tokens: int,
+    ) -> tuple[str, LlmUsage]:
+        from google.genai import types
+
+        if not model:
+            raise LlmError("not_configured", "model name is empty")
+        contents = [
+            types.Content(
+                role="user",
+                parts=[
+                    types.Part.from_bytes(data=audio, mime_type=mime),
+                    types.Part.from_text(text=instruction),
+                ],
+            )
+        ]
+        try:
+            async with asyncio.timeout(TOTAL_TIMEOUT_S):
+                response = await self._get_client().aio.models.generate_content(
+                    model=model,
+                    contents=contents,
+                    config=self._config(system, max_output_tokens, 0.0),
                 )
         except Exception as exc:  # noqa: BLE001
             raise self._map_error(exc) from exc
@@ -270,12 +328,19 @@ class FakeLlm:
         reply: str = "Cześć! Jak się masz?",
         summary: str = "Summary.",
         fail_models: dict[str, LlmErrorCode] | None = None,
+        transcript: str = "Cześć, mam na imię Pedro.",
+        transcribe_failures: list[LlmErrorCode] | None = None,
+        stream_delay_s: float = 0.0,
     ) -> None:
         self.reply = reply
         self.summary = summary
         self.fail_models = fail_models or {}
+        self.transcript = transcript
+        self.transcribe_failures = list(transcribe_failures or [])
+        self.stream_delay_s = stream_delay_s
         self.stream_calls: list[dict[str, object]] = []
         self.complete_calls: list[dict[str, object]] = []
+        self.transcribe_calls: list[dict[str, object]] = []
 
     async def stream(
         self,
@@ -291,6 +356,8 @@ class FakeLlm:
             raise LlmError(self.fail_models[model], "fake failure")
         words = self.reply.split(" ")
         for i, word in enumerate(words):
+            if self.stream_delay_s:
+                await asyncio.sleep(self.stream_delay_s)
             yield TextDelta(word if i == 0 else " " + word)
         yield StreamEnd(LlmUsage(input_tokens=100, output_tokens=len(words)))
 
@@ -307,3 +374,26 @@ class FakeLlm:
         if model in self.fail_models:
             raise LlmError(self.fail_models[model], "fake failure")
         return self.summary, LlmUsage(input_tokens=50, output_tokens=10)
+
+    async def transcribe(
+        self,
+        *,
+        model: str,
+        system: str,
+        instruction: str,
+        audio: bytes,
+        mime: str,
+        max_output_tokens: int,
+    ) -> tuple[str, LlmUsage]:
+        self.transcribe_calls.append(
+            {
+                "model": model,
+                "system": system,
+                "instruction": instruction,
+                "mime": mime,
+                "bytes": len(audio),
+            }
+        )
+        if self.transcribe_failures:
+            raise LlmError(self.transcribe_failures.pop(0), "fake failure")
+        return self.transcript, LlmUsage(input_tokens=200, output_tokens=12, audio_tokens=160)

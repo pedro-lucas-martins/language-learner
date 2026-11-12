@@ -9,7 +9,18 @@ from pydantic import BaseModel, ValidationError
 
 from app.database import session_factory
 from app.i18n import error_text
-from app.protocol import AuthMsg, ErrorMsg, ReadyMsg, SetLevelMsg, UserTextMsg, client_msg_adapter
+from app.protocol import (
+    AudioMetaMsg,
+    AuthMsg,
+    EndOfSpeechMsg,
+    ErrorMsg,
+    ReadyMsg,
+    SetLevelMsg,
+    StartOfSpeechMsg,
+    UserStartedSpeakingMsg,
+    UserTextMsg,
+    client_msg_adapter,
+)
 from app.security import is_allowed_origin
 from app.services.auth import authenticate
 from app.services.conversation import Conversation
@@ -20,6 +31,17 @@ router = APIRouter()
 AUTH_TIMEOUT_S = 5.0
 CLOSE_UNAUTHORIZED = 4401
 CLOSE_FORBIDDEN_ORIGIN = 4403
+# One utterance as a single binary message (SPEC §6). ~2 min of Opus at 32 kbps is ~0.5 MB.
+MAX_UTTERANCE_BYTES = 2 * 1024 * 1024
+
+
+class _Utterance:
+    """Audio announced by start_of_speech, received as binary, closed by end_of_speech."""
+
+    def __init__(self, mime: str) -> None:
+        self.mime = mime
+        self.parts: list[bytes] = []
+        self.size = 0
 
 
 @router.websocket("/ws")
@@ -45,33 +67,81 @@ async def chat_socket(websocket: WebSocket) -> None:
         await _safe_close(websocket, CLOSE_UNAUTHORIZED)
         return
 
+    # Turns run in their own task; the lock keeps each audio_meta next to its binary frame.
+    send_lock = asyncio.Lock()
+
     async def send(msg: BaseModel) -> None:
-        await websocket.send_text(msg.model_dump_json())
+        async with send_lock:
+            await websocket.send_text(msg.model_dump_json())
+
+    async def send_audio(meta: AudioMetaMsg, data: bytes) -> None:
+        async with send_lock:
+            await websocket.send_text(meta.model_dump_json())
+            await websocket.send_bytes(data)
 
     conversation = await Conversation.start(
-        user=user, settings=settings, llm=websocket.app.state.llm, send=send
+        user=user,
+        settings=settings,
+        llm=websocket.app.state.llm,
+        send=send,
+        tts=getattr(websocket.app.state, "tts", None),
+        send_audio=send_audio,
     )
+
+    async def bad_request() -> None:
+        await send(
+            ErrorMsg(
+                code="bad_request",
+                message=error_text(conversation.learner.native_lang, "bad_request"),
+            )
+        )
+
+    utterance: _Utterance | None = None
     try:
         await send(
             ReadyMsg(user=conversation.learner.info(), session_id=str(conversation.session_id))
         )
         await conversation.send_initial_usage()
         while True:
-            raw = await websocket.receive_text()
+            frame = await websocket.receive()
+            if frame["type"] == "websocket.disconnect":
+                raise WebSocketDisconnect(frame.get("code", 1000))
+            data = frame.get("bytes")
+            if data is not None:
+                if utterance is None:
+                    await bad_request()  # audio without start_of_speech
+                    continue
+                utterance.size += len(data)
+                if utterance.size > MAX_UTTERANCE_BYTES:
+                    utterance = None
+                    await bad_request()
+                    continue
+                utterance.parts.append(data)
+                continue
             try:
-                msg = client_msg_adapter.validate_python(json.loads(raw))
+                msg = client_msg_adapter.validate_python(json.loads(frame.get("text") or ""))
             except (ValidationError, ValueError):
-                await send(
-                    ErrorMsg(
-                        code="bad_request",
-                        message=error_text(conversation.learner.native_lang, "bad_request"),
-                    )
-                )
+                await bad_request()
                 continue
             if isinstance(msg, UserTextMsg):
-                await conversation.handle_user_text(msg.text)
+                await conversation.submit_text(msg.text)
             elif isinstance(msg, SetLevelMsg):
                 await conversation.set_level(msg.level)
+            elif isinstance(msg, StartOfSpeechMsg):
+                if msg.purpose != "utterance":
+                    await bad_request()  # pron_retry arrives in slice 3
+                    continue
+                utterance = _Utterance(msg.mime)
+            elif isinstance(msg, EndOfSpeechMsg):
+                if utterance is None or not utterance.parts:
+                    utterance = None
+                    await bad_request()
+                    continue
+                audio, mime = b"".join(utterance.parts), utterance.mime
+                utterance = None
+                await conversation.submit_utterance(audio, mime)
+            elif isinstance(msg, UserStartedSpeakingMsg):
+                await conversation.interrupt()
             # A second `auth` after login is ignored.
     except WebSocketDisconnect:
         pass

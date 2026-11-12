@@ -9,6 +9,9 @@ from app import database
 from app.config import get_settings
 from app.routers import me, ws_chat
 from app.services.llm import GeminiProvider
+from app.services.tts.cache import DbTtsCache
+from app.services.tts.chain import TtsChain, build_active_provider
+from app.services.tts.edge import EdgeTts
 
 settings = get_settings()
 logging.basicConfig(level=logging.INFO)
@@ -24,6 +27,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.llm = GeminiProvider(
             settings.gemini_api_key, thinking_level=settings.gemini_thinking_level
         )
+    if getattr(app.state, "tts", None) is None:
+        app.state.tts = TtsChain(
+            build_active_provider(settings),
+            EdgeTts(settings),
+            cache=DbTtsCache(settings.tts_cache_max_mb),
+        )
     yield
     if owns_engine:
         await database.dispose_engine()
@@ -31,6 +40,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="Language Learner API", version="0.2.0", lifespan=lifespan)
 app.state.llm = None
+app.state.tts = None
 app.state.settings = settings
 
 app.add_middleware(

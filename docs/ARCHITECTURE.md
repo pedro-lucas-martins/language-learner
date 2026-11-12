@@ -2,7 +2,7 @@
 
 Describes what exists **now**. Target design lives in [`SPEC.md`](SPEC.md).
 
-_Last updated: slice 2a (TTS adapters and benchmark; voice not wired into the chat yet)._
+_Last updated: slice 2b (voice turn on the backend; the browser does not record or play audio yet — slice 2c)._
 
 ## Overview
 
@@ -11,6 +11,16 @@ browser (React)  ──WebSocket /ws──▶  FastAPI  ──▶  Gemini (chat 
       │                                 │
       └── GET /me (Bearer token) ───────┴──▶  Postgres (users, sessions, messages, usage)
 ```
+
+## A voice turn
+
+1. `start_of_speech` (`mime`) → one binary frame with the whole utterance (≤ 2 MB) → `end_of_speech`.
+2. Caps checked (daily LLM calls; daily STT seconds estimated from size). Gemini transcribes
+   verbatim (`stt_service.py`), `usage_events` get tokens and audio seconds.
+3. From here it is a text turn (below) whose input is the transcript.
+
+The turn runs as an `asyncio` task. `user_started_speaking`, a new utterance or a typed message
+cancels it (LLM and TTS); the server sends `interrupted` and keeps the partial reply in history.
 
 ## A text turn
 
@@ -21,7 +31,11 @@ browser (React)  ──WebSocket /ws──▶  FastAPI  ──▶  Gemini (chat 
 3. `user_text` → daily-cap check → the message is stored and echoed as `transcript`.
 4. The system prompt is built (static persona + direction notes, level rules, `user_facts`,
    running summary) and sent with the pending + window turns and the new text.
-5. Gemini streams the reply as `ai_text_delta`; then `ai_text_done` and an updated `usage`.
+5. Gemini streams the reply as `ai_text_delta`. The deltas also feed the sentence buffer;
+   each complete sentence goes to the TTS chain in order. Every audio chunk is sent as
+   `audio_meta` (`sentence`, `seq`, `mime`, `final`) followed by one binary frame. If all
+   server voices fail, `tts_fallback` asks the browser to speak that sentence.
+   Then `ai_text_done`, `metrics` (stt / first token / first audio / total ms) and `usage`.
 6. The turn enters the memory window. When enough turns have left the window, a background
    task summarizes them with the utility model (SPEC §4.2).
 7. On disconnect the session gets `ended_at` and its final summary (close is shielded from
@@ -45,7 +59,9 @@ browser (React)  ──WebSocket /ws──▶  FastAPI  ──▶  Gemini (chat 
 | `app/services/prompts.py` | System prompts per direction and level, summary prompt |
 | `app/services/memory.py` | Pure sliding window + pending buffer + summary bookkeeping |
 | `app/services/usage.py` | `usage_events` rows, daily call cap, monthly spend estimate |
-| `app/services/conversation.py` | Per-socket orchestrator for a turn |
+| `app/services/conversation.py` | Per-socket orchestrator: turn tasks, barge-in, LLM → sentences → TTS, metrics |
+| `app/services/stt_service.py` | Gemini speech-to-text: verbatim prompt, retry, audio seconds |
+| `app/services/sentence_buffer.py` | Splits the streamed reply into sentences (decimals, dates, abbreviations) |
 | `app/services/tts/base.py` | `TtsProvider` interface, `TtsError`, first-byte/total timeouts, voice choice |
 | `app/services/tts/google.py` | Google Chirp 3 HD via gRPC streaming, OGG_OPUS output |
 | `app/services/tts/elevenlabs.py` | ElevenLabs streaming over HTTP (`httpx`), MP3 output |
@@ -54,6 +70,7 @@ browser (React)  ──WebSocket /ws──▶  FastAPI  ──▶  Gemini (chat 
 | `app/services/tts/cache.py` | `tts_cache` table access, sha256 key, LRU eviction by `TTS_CACHE_MAX_MB` |
 | `alembic/` | Migrations (`0001_initial`, `0002_tts_cache`) |
 | `scripts/create_user.py` | Creates a learner and prints the token once |
+| `scripts/stt_eval.py` | Runs your recorded clips through the STT and compares with what you said |
 | `scripts/tts_bench.py` | TTS benchmark: TTFA per provider × language, blind A/B page, asks before spending |
 
 **LLM fallback:** each model gets one retry for transient errors; then the next model in the
@@ -64,7 +81,7 @@ only the utility model is used. Once text has been streamed, errors are not retr
 3 s to first byte); before any audio is sent it can fall back to edge-tts; if that fails too the
 caller must ask the browser to speak (`TtsUnavailable`). Over 95% of `TTS_MONTHLY_CHARS` or over
 the daily character cap, edge-tts is used directly. A `tts_chars` row is written per request.
-Not yet called by the conversation (slice 2b).
+The conversation calls it once per sentence.
 
 **Caps:** one `llm_in` row is written per LLM call; `DAILY_LLM_CALLS_PER_USER` counts them.
 The spend estimate multiplies summed usage by the `PRICE_*` settings.
@@ -90,7 +107,14 @@ The spend estimate multiplies summed usage by the `PRICE_*` settings.
 - CI also applies the migrations to a real Postgres and runs `alembic check`.
 - Frontend (vitest): reducer, frame parser, i18n key parity, language detection.
 
+## Known limitations
+
+- **STT normalization:** LLM-based STT may "fix" the learner's grammar (seen: "minha amigo" →
+  "meu amigo"). The prompt asks for verbatim output; the editable transcript arrives in slice 3.
+- **Latency** is measured per turn (`metrics`), not promised. Warm local numbers are in
+  `docs/DECISIONS.md` (012).
+
 ## Not built yet
 
-Voice in the conversation (STT, sentence buffer, audio over the WebSocket, client audio), feedback track, pronunciation, topics, flashcards, user_facts updates,
+Recording and playing audio in the browser (slice 2c), feedback track, pronunciation, topics, flashcards, user_facts updates,
 responsive layouts, deploy. See SPEC §11.

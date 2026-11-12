@@ -211,14 +211,14 @@ Server → client:
 | `transcript` | `message_id`, `text` |
 | `ai_text_delta` | `message_id`, `delta` |
 | `ai_text_done` | `message_id`, `text` |
-| *(binary)* | audio chunk, preceded by `audio_meta` (for `speak_word`, `message_id` = `word:<word>`) |
-| `audio_meta` | `message_id`, `seq`, `mime` |
-| `tts_fallback` | `message_id`, `text`, `lang` |
+| *(binary)* | audio chunk, always preceded by exactly one `audio_meta` (for `speak_word`, `message_id` = `word:<word>`) |
+| `audio_meta` | `message_id`, `seq` (chunk counter per message), `sentence` (0-based index of the sentence in the reply), `mime`, `final` (true on the last chunk of that sentence — the client plays a sentence once it is complete) |
+| `tts_fallback` | `message_id`, `sentence`, `text`, `lang` — the browser speaks this sentence with `speechSynthesis`, in sentence order |
 | `feedback` | `message_id`, result per §5 (grammar + pronunciation) |
 | `pron_result` | `message_id`, `word`, `better` (bool), `tip` |
 | `topic` | `message_id`, `text` |
 | `interrupted` | `message_id` |
-| `metrics` | timings per §6 |
+| `metrics` | `message_id`, `stt_ms` (null for typed turns), `llm_first_token_ms`, `first_audio_ms` (null if no server audio), `total_ms` — measured from `end_of_speech` / `user_text` (§6) |
 | `usage` | `month_usd_est`, `budget_usd`, `tts_chars_month`, `tts_chars_allowance`, `tts_provider_active` |
 | `error` | `code` (`quota_exceeded`, `provider_unavailable`, `stt_failed`, `bad_request`), `message` (in native_lang) |
 

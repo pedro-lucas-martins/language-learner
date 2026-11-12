@@ -38,13 +38,11 @@ class TtsChain:
         active: TtsProvider | None,
         fallback: TtsProvider,
         *,
-        record: RecordTts,
         cache: TtsCacheStore | None = None,
         retry_delay_s: float = RETRY_DELAY_S,
     ) -> None:
         self.active = active
         self.fallback = fallback
-        self._record = record
         self._cache = cache
         self._retry_delay_s = retry_delay_s
 
@@ -76,6 +74,7 @@ class TtsChain:
         voice_id: str | None,
         speaking_rate: float = 1.0,
         *,
+        record: RecordTts,
         over_allowance: bool = False,
     ) -> AsyncIterator[TtsChunk]:
         for provider, voice in self._plan(lang, voice_id, use_active=not over_allowance):
@@ -91,7 +90,7 @@ class TtsChain:
                     async for data in provider.synthesize_stream(text, lang, voice, speaking_rate):
                         if not parts:
                             # Billed once the provider starts sending audio.
-                            await self._record(provider.name, provider.model, len(text))
+                            await record(provider.name, provider.model, len(text))
                         parts.append(data)
                         yield TtsChunk(data, provider.mime, provider.name)
                 except TtsError as exc:

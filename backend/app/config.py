@@ -58,6 +58,8 @@ class Settings(BaseSettings):
     app_env: str = "development"
     frontend_url: str = "http://localhost:5173"
     vercel_preview_regex: str = ""
+    # Development only: extra exact origins, e.g. the HTTPS LAN address used to test on a phone.
+    dev_extra_origins: str = ""
 
     # --- Database ---
     database_url: str = "postgresql+asyncpg://app:app@localhost:5432/app"
@@ -145,6 +147,7 @@ class Settings(BaseSettings):
         origins = [self.frontend_url.rstrip("/")]
         if self.app_env == "development":
             origins.append("http://localhost:5173")
+            origins += [o.rstrip("/") for o in _parse_csv(self.dev_extra_origins)]
         return sorted(set(origins))
 
 

@@ -1,6 +1,6 @@
 /**
  * WebSocket protocol (SPEC §7). Mirrors backend/app/protocol.py — change both together.
- * Slice 1 implements the text subset.
+ * Slice 2 adds voice: audio in, audio out (binary frames after `audio_meta`), barge-in, metrics.
  */
 
 export type Lang = "pt-BR" | "pl-PL";
@@ -9,6 +9,7 @@ export const LEVELS: readonly Level[] = ["A1", "A2", "B1", "B2", "C1"];
 export type ErrorCode = "quota_exceeded" | "provider_unavailable" | "stt_failed" | "bad_request";
 
 export const MAX_USER_TEXT = 1000;
+export const MAX_MIME = 100;
 
 /** WebSocket close codes used by the server. */
 export const CLOSE_UNAUTHORIZED = 4401;
@@ -19,7 +20,16 @@ export const CLOSE_FORBIDDEN_ORIGIN = 4403;
 export type ClientMsg =
   | { type: "auth"; token: string }
   | { type: "user_text"; text: string }
-  | { type: "set_level"; level: Level };
+  | { type: "set_level"; level: Level }
+  | {
+      type: "start_of_speech";
+      mime: string;
+      purpose: "utterance" | "pron_retry";
+      target_word?: string;
+      message_id?: string;
+    }
+  | { type: "end_of_speech" }
+  | { type: "user_started_speaking" };
 
 // --- server → client ---------------------------------------------------------
 
@@ -38,6 +48,25 @@ export type ServerMsg =
   | { type: "ai_text_delta"; message_id: string; delta: string }
   | { type: "ai_text_done"; message_id: string; text: string }
   | {
+      /** Precedes every binary audio frame; `final` marks the last chunk of a sentence. */
+      type: "audio_meta";
+      message_id: string;
+      seq: number;
+      sentence: number;
+      mime: string;
+      final: boolean;
+    }
+  | { type: "tts_fallback"; message_id: string; sentence: number; text: string; lang: Lang }
+  | { type: "interrupted"; message_id: string }
+  | {
+      type: "metrics";
+      message_id: string;
+      stt_ms: number | null;
+      llm_first_token_ms: number | null;
+      first_audio_ms: number | null;
+      total_ms: number;
+    }
+  | {
       type: "usage";
       month_usd_est: number;
       budget_usd: number;
@@ -53,6 +82,10 @@ const SERVER_TYPES = new Set<ServerMsg["type"]>([
   "transcript",
   "ai_text_delta",
   "ai_text_done",
+  "audio_meta",
+  "tts_fallback",
+  "interrupted",
+  "metrics",
   "usage",
   "error",
 ]);

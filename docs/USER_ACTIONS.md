@@ -48,6 +48,21 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
 - [ ] Observação: no plano Free, o ElevenLabs só usa as vozes padrão pela API (Sarah e George, com sotaque
       neutro). Vozes nativas polonesas e brasileiras da biblioteca exigem plano pago.
 
+## Fatia 2b — avaliar a transcrição com a sua voz (opcional, recomendado)
+
+- [ ] Gravar 6–10 clipes curtos (5–15 s) falando polonês **com erros de propósito** (casos, aspecto,
+      gênero) e alguns em português. Qualquer gravador serve (.webm, .ogg, .mp3, .m4a, .wav).
+      Salvar em `backend/scripts/stt_clips/` (essa pasta não vai para o git) com um `expected.json`:
+      ```json
+      [{"file": "pl_01.webm", "target_lang": "pl-PL", "native_lang": "pt-BR",
+        "expected": "Ja mam dwa kot.", "mispronounced": []}]
+      ```
+- [ ] Rodar (mostra o custo estimado — centavos — e pede confirmação):
+      ```bash
+      cd backend && .venv/bin/python -m scripts.stt_eval
+      ```
+      Compare "expected" com "got": o ideal é a transcrição manter os seus erros.
+
 ## Depois do benchmark
 
 - [x] Ouvir a comparação às cegas (`bench_results/<data>/index.html`) e ver a latência no `report.md`.

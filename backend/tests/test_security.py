@@ -84,3 +84,13 @@ def test_tts_provider_configured_checks_credentials() -> None:
 def test_unknown_tts_provider_is_rejected() -> None:
     with pytest.raises(ValueError):
         make_settings(tts_provider="polly")
+
+
+def test_dev_extra_origins_only_in_development() -> None:
+    from app.security import is_allowed_origin
+
+    dev = make_settings(app_env="development", dev_extra_origins="https://192.168.0.10:5173/")
+    prod = make_settings(app_env="production", dev_extra_origins="https://192.168.0.10:5173")
+    assert is_allowed_origin("https://192.168.0.10:5173", dev)
+    assert not is_allowed_origin("https://192.168.0.11:5173", dev)
+    assert not is_allowed_origin("https://192.168.0.10:5173", prod)

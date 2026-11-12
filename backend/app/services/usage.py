@@ -26,6 +26,12 @@ def _start_of_month(now: datetime) -> datetime:
 def _unit_price(settings: Settings, kind: str, role: str) -> float:
     """USD per unit of `amount` for a usage row."""
     per_m = 1_000_000
+    if role == "stt":
+        if kind == "llm_in":
+            return settings.price_stt_audio_input_per_m / per_m
+        if kind == "llm_out":
+            return settings.price_utility_output_per_m / per_m
+        return 0.0
     if kind == "llm_in":
         price = (
             settings.price_chat_input_per_m
@@ -63,6 +69,29 @@ async def record_llm(
         ]
     )
     await db.commit()
+
+
+async def record_stt(
+    db: AsyncSession, *, user_id: uuid.UUID | None, model: str, usage: LlmUsage, seconds: float
+) -> None:
+    """Token rows (priced as audio input) plus the audio seconds for the daily cap."""
+    await record_llm(db, user_id=user_id, role="stt", model=model, usage=usage)
+    db.add(UsageEvent(user_id=user_id, kind="stt_audio_s", role="stt", model=model, amount=seconds))
+    await db.commit()
+
+
+async def stt_seconds_today(
+    db: AsyncSession, user_id: uuid.UUID, now: datetime | None = None
+) -> float:
+    since = _start_of_day(now or datetime.now(UTC))
+    total = await db.scalar(
+        select(func.sum(UsageEvent.amount)).where(
+            UsageEvent.user_id == user_id,
+            UsageEvent.kind == "stt_audio_s",
+            UsageEvent.created_at >= since,
+        )
+    )
+    return float(total or 0)
 
 
 async def record_tts(
@@ -135,6 +164,13 @@ class UsageSnapshot:
     llm_calls_cap: int
     tts_chars_today: int = 0
     tts_chars_cap: int = 0
+    stt_seconds_today: float = 0.0
+    stt_seconds_cap: int = 0
+
+    def stt_cap_reached(self, extra_seconds: float = 0.0) -> bool:
+        return self.stt_seconds_cap > 0 and (
+            self.stt_seconds_today + extra_seconds > self.stt_seconds_cap
+        )
 
     @property
     def budget_exceeded(self) -> bool:
@@ -165,4 +201,6 @@ async def snapshot(db: AsyncSession, settings: Settings, user_id: uuid.UUID) -> 
         llm_calls_cap=settings.daily_llm_calls_per_user,
         tts_chars_today=await tts_chars_today(db, user_id),
         tts_chars_cap=settings.daily_tts_chars_per_user,
+        stt_seconds_today=await stt_seconds_today(db, user_id),
+        stt_seconds_cap=settings.daily_stt_seconds_per_user,
     )

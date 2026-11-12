@@ -138,6 +138,15 @@ function applyServerMsg(state: ChatState, msg: ServerMsg): ChatState {
         usage: { monthUsdEst: msg.month_usd_est, budgetUsd: msg.budget_usd },
       };
 
+    case "interrupted":
+      return { ...state, awaitingReply: false, messages: finishStreaming(state.messages) };
+
+    // Audio frames and timings are handled by the audio layer, not this reducer.
+    case "audio_meta":
+    case "tts_fallback":
+    case "metrics":
+      return state;
+
     case "error":
       return {
         ...state,

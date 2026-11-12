@@ -1,5 +1,6 @@
 """End-to-end WebSocket tests with SQLite and FakeLlm."""
 
+import json
 import time
 from collections.abc import Callable
 from typing import Any
@@ -47,12 +48,23 @@ def _login(ws: WebSocketTestSession, token: str) -> dict[str, Any]:
     return ready
 
 
+AUDIO_EVENTS = {"audio_meta", "tts_fallback", "metrics"}
+
+
 def _say(ws: WebSocketTestSession, text: str) -> list[dict[str, Any]]:
-    """Send a message and collect events until the turn ends (usage or error)."""
+    """Send a message and collect the text events until the turn ends (usage or error).
+
+    Audio frames and timings are covered in test_ws_voice.py and skipped here.
+    """
     ws.send_json({"type": "user_text", "text": text})
     events = []
     while True:
-        event = ws.receive_json()
+        frame = ws.receive()
+        if frame.get("bytes") is not None:
+            continue
+        event = json.loads(frame["text"])
+        if event["type"] in AUDIO_EVENTS:
+            continue
         events.append(event)
         if event["type"] in ("usage", "error"):
             return events

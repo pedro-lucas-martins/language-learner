@@ -23,10 +23,20 @@ async def collect(stream: AsyncIterator[TtsChunk]) -> list[TtsChunk]:
     return [chunk async for chunk in stream]
 
 
+class BoundChain:
+    """Passes the recorder on every call, like the conversation does."""
+
+    def __init__(self, chain: TtsChain, record: Recorder) -> None:
+        self._chain, self._record = chain, record
+
+    def stream(self, *args, **kwargs):  # type: ignore[no-untyped-def]
+        return self._chain.stream(*args, record=self._record, **kwargs)
+
+
 def make_chain(active: FakeTts | None, fallback: FakeTts, cache: MemoryCache | None = None):
     record = Recorder()
-    chain = TtsChain(active, fallback, record=record, cache=cache, retry_delay_s=0)
-    return chain, record
+    chain = TtsChain(active, fallback, cache=cache, retry_delay_s=0)
+    return BoundChain(chain, record), record
 
 
 async def test_active_provider_streams_and_records_usage() -> None:

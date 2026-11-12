@@ -62,6 +62,16 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Decision:** `TTS_PROVIDER=google` on the free tier. ElevenLabs stays as a selectable adapter.
 - **Consequence:** zero TTS cost within 1M characters/month; with sentence-by-sentence playback the first sentence starts ~1 s after its text is ready (more at p90). Re-run the benchmark from the deployed region in slice 6.
 
+## 012 — Slice 2b: voice turn on the backend (2026-11-12)
+- **Playback unit = sentence.** `audio_meta` gains `sentence` and `final`; the server holds back one chunk so the last chunk of each sentence carries `final=true`. `tts_fallback` gains `sentence` so the browser keeps the order. SPEC §7 updated.
+- **Typed turns are spoken too**, through the same TTS path.
+- **Barge-in:** every turn is an `asyncio` task. `user_started_speaking`, a new utterance or a new typed message cancels it (LLM and TTS) and the server sends `interrupted`. The text produced so far is kept in the history (persisted and added to the memory window), since the learner saw it.
+- **STT:** `gemini-3.5-flash-lite`, verbatim prompt, temperature 0, inline audio, MIME without codec parameters. Audio seconds come from Gemini's audio token count (32/s); before the call a size estimate enforces `DAILY_STT_SECONDS_PER_USER`. STT tokens are priced with `PRICE_STT_AUDIO_INPUT_PER_M` (input) and the utility output price.
+- **First check (2026-11-12, synthetic clips with deliberate errors):** errors kept ("dwa kot", "jedna pies", "eu gosta", "de a praia"), but "minha amigo" came back as "meu amigo" — the normalization problem from SPEC §5 is real; the editable transcript (slice 3) remains necessary.
+- **Observed latency, warm, local Docker, Polish ~5 s utterance:** STT ~1.6–2.1 s, first LLM token ~2.6–3.0 s, first audio ~3.5–3.6 s, total ~4.6–5.6 s after `end_of_speech`. First turn after startup ~5.9 s. Not a target, just a measurement.
+- **`DEV_EXTRA_ORIGINS`:** exact extra origins accepted only in development, for the HTTPS LAN address used to test on a phone (slice 2c).
+- **Utterance size:** one binary message of at most 2 MB.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |
