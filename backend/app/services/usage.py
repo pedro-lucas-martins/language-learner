@@ -26,6 +26,12 @@ def _start_of_month(now: datetime) -> datetime:
 def _unit_price(settings: Settings, kind: str, role: str) -> float:
     """USD per unit of `amount` for a usage row."""
     per_m = 1_000_000
+    if role == "feedback":
+        if kind == "llm_in":
+            return settings.price_feedback_input_per_m / per_m
+        if kind == "llm_out":
+            return settings.price_feedback_output_per_m / per_m
+        return 0.0
     if role == "stt":
         if kind == "llm_in":
             return settings.price_stt_audio_input_per_m / per_m

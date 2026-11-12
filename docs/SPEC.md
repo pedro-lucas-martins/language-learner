@@ -42,7 +42,7 @@ Paid services allowed: **Google Gemini API (paid tier)** and **one TTS provider*
 | Backend | Python 3.11+, FastAPI, WebSockets | Container on a free PaaS (Render free tier by default) |
 | DB | PostgreSQL — Supabase free in prod, Docker locally | SQLAlchemy 2.0 async + Alembic migrations |
 | Session state | In-process memory per WebSocket + persisted to Postgres | **No Redis.** Single backend instance is assumed |
-| LLM | Gemini API, paid tier (`google-genai` SDK) | Two roles with separate env vars: `GEMINI_CHAT_MODEL` (conversation — stronger Flash-tier) and `GEMINI_UTILITY_MODEL` (grammar + pronunciation JSON, summaries, user_facts, STT — Flash-Lite tier). Both receive audio on voice turns (§4.1, §5) |
+| LLM | Gemini API, paid tier (`google-genai` SDK) | Roles with separate env vars: `GEMINI_CHAT_MODEL` (conversation), `GEMINI_FEEDBACK_MODEL` (Track 2 grammar + pronunciation JSON and `pron_retry` judgments, §5), `GEMINI_UTILITY_MODEL` (summaries, user_facts; also the chat fallback and the cheapest model once over budget) and `GEMINI_STT_MODEL`. Chat and feedback receive audio on voice turns (§4.1, §5) |
 | STT | Gemini audio understanding (`GEMINI_STT_MODEL`) | Single provider. Keep it in its own `stt_service.py` so it stays isolated from the chat logic |
 | TTS | Selectable by env `TTS_PROVIDER` = `google` \| `elevenlabs`, each behind the same `TtsProvider` interface. Provisional default: `google` (Chirp 3 HD — its free tier of 1M characters/month covers the expected use). The final choice is made with `tts_bench.py` (§6) | Fallback chain: active provider → `edge-tts` → browser `speechSynthesis`. See §6 |
 
@@ -102,7 +102,7 @@ For voice turns, Track 1 receives the user's **audio** together with the verbati
 
 ## 5. Feedback track (Track 2): grammar + pronunciation
 
-Runs asynchronously on each user utterance with ≥3 words, in parallel with Track 1. Uses the utility model.
+Runs asynchronously on each user utterance with ≥3 words, in parallel with Track 1. Uses the feedback model (`GEMINI_FEEDBACK_MODEL`; the utility model once the monthly budget is reached). It is **not** cancelled by barge-in: the learner's message was still said. Results are stored on the message (`messages.feedback`).
 For voice turns it receives the **audio and the verbatim transcript** in one call and returns grammar and pronunciation feedback together. For typed turns (or after a `regrade`), it gets text only and returns grammar only.
 
 Response schema (strict JSON, validated with Pydantic; on invalid JSON → ignore silently and log):
@@ -128,7 +128,7 @@ Contrastive focus — pronunciation:
 
 ### Practice: listen and repeat
 - Each pronunciation item in the panel has: ▶ listen (correct word via the user's TTS voice, normal and 0.8× via `playbackRate`; cached per §6), and 🎙 try again.
-- "Try again" records only that word/phrase and sends `pron_retry` (§7). The utility model judges that single attempt against the target word and returns `pron_result` with `better: bool` and a short tip. Recorded in `usage_events` like any other call.
+- "Try again" records only that word/phrase and sends `pron_retry` (§7). The feedback model judges that single attempt against the target word and returns `pron_result` with `better: bool` and a short tip. Recorded in `usage_events` like any other call.
 
 ### STT normalization problem
 LLM-based speech-to-text (like Gemini) tends to "fix" learners' grammar, hiding mistakes. Mitigations (all required):
@@ -214,7 +214,7 @@ Server → client:
 | *(binary)* | audio chunk, always preceded by exactly one `audio_meta` (for `speak_word`, `message_id` = `word:<word>`) |
 | `audio_meta` | `message_id`, `seq` (chunk counter per message), `sentence` (0-based index of the sentence in the reply), `mime`, `final` (true on the last chunk of that sentence — the client plays a sentence once it is complete) |
 | `tts_fallback` | `message_id`, `sentence`, `text`, `lang` — the browser speaks this sentence with `speechSynthesis`, in sentence order |
-| `feedback` | `message_id`, result per §5 (grammar + pronunciation) |
+| `feedback` | `message_id` (the learner's message), `source` (`audio` \| `text`), `ok`, `errs`, `pron` — per §5; `pron` is empty for `text` |
 | `pron_result` | `message_id`, `word`, `better` (bool), `tip` |
 | `topic` | `message_id`, `text` |
 | `interrupted` | `message_id` |

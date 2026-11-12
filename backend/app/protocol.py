@@ -38,6 +38,17 @@ class SetLevelMsg(_Msg):
     level: Level
 
 
+class RegradeMsg(_Msg):
+    type: Literal["regrade"]
+    message_id: str = Field(max_length=80)
+    text: str = Field(min_length=1, max_length=MAX_USER_TEXT)
+
+
+class SetRecastMsg(_Msg):
+    type: Literal["set_recast"]
+    enabled: bool
+
+
 class StartOfSpeechMsg(_Msg):
     type: Literal["start_of_speech"]
     mime: str = Field(min_length=1, max_length=MAX_MIME)
@@ -58,6 +69,8 @@ ClientMsg = Annotated[
     AuthMsg
     | UserTextMsg
     | SetLevelMsg
+    | RegradeMsg
+    | SetRecastMsg
     | StartOfSpeechMsg
     | EndOfSpeechMsg
     | UserStartedSpeakingMsg,
@@ -148,6 +161,31 @@ class MetricsMsg(BaseModel):
     total_ms: int
 
 
+class GrammarError(BaseModel):
+    """One grammar mistake (SPEC §5). Explanations are in the learner's native language."""
+
+    e: str = Field(max_length=300, description="the wrong substring, copied from the message")
+    c: str = Field(max_length=300, description="corrected form")
+    r: str = Field(max_length=400, description="short rule")
+    p: str = Field(default="", max_length=400, description="PT⇄PL contrast tip")
+
+
+class PronIssue(BaseModel):
+    w: str = Field(max_length=80, description="the word, correctly spelled")
+    heard: str = Field(max_length=120, description="approximation of what was said")
+    tip: str = Field(max_length=400, description="articulation tip")
+    sev: Literal["major", "minor"]
+
+
+class FeedbackMsg(BaseModel):
+    type: Literal["feedback"] = "feedback"
+    message_id: str
+    source: Literal["audio", "text"]
+    ok: bool
+    errs: list[GrammarError]
+    pron: list[PronIssue]
+
+
 class ErrorMsg(BaseModel):
     type: Literal["error"] = "error"
     code: ErrorCode
@@ -164,6 +202,7 @@ ServerMsg = (
     | TtsFallbackMsg
     | InterruptedMsg
     | MetricsMsg
+    | FeedbackMsg
     | UsageMsg
     | ErrorMsg
 )

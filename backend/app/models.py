@@ -1,4 +1,4 @@
-"""Database tables (SPEC §3, §4, §6). Flashcards arrive in a later slice."""
+"""Database tables (SPEC §3, §4, §5, §6)."""
 
 import uuid
 from datetime import UTC, datetime
@@ -15,6 +15,7 @@ from sqlalchemy import (
     LargeBinary,
     String,
     Text,
+    UniqueConstraint,
     Uuid,
 )
 from sqlalchemy.orm import Mapped, mapped_column
@@ -83,6 +84,8 @@ class Message(Base):
     )
     role: Mapped[str] = mapped_column(String(4))
     text: Mapped[str] = mapped_column(Text)
+    # Track 2 result for user messages, as JSON (SPEC §5).
+    feedback: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -118,3 +121,31 @@ class TtsCache(Base):
     audio: Mapped[bytes] = mapped_column(LargeBinary)
     bytes: Mapped[int] = mapped_column(Integer)
     last_used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class Flashcard(Base):
+    """One card per mistake, scheduled with SM-2 (SPEC §5)."""
+
+    __tablename__ = "flashcards"
+    __table_args__ = (
+        CheckConstraint("kind IN ('grammar', 'pronunciation')", name="ck_flashcards_kind"),
+        UniqueConstraint("user_id", "kind", "front", name="uq_flashcards_user_kind_front"),
+        Index("ix_flashcards_user_due", "user_id", "due_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(16))
+    front: Mapped[str] = mapped_column(Text)
+    back: Mapped[str] = mapped_column(Text)
+    # Pronunciation cards: the word to listen to and retry.
+    word: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    lang: Mapped[str] = mapped_column(String(5))
+    source_message_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("messages.id", ondelete="SET NULL"), nullable=True
+    )
+    ease: Mapped[float] = mapped_column(Float, default=2.5)
+    interval_days: Mapped[int] = mapped_column(Integer, default=0)
+    repetitions: Mapped[int] = mapped_column(Integer, default=0)
+    due_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

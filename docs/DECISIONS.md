@@ -79,6 +79,16 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Phone testing:** `npm run dev:lan` serves HTTPS with a self-signed certificate (`@vitejs/plugin-basic-ssl`) and proxies `/ws`, `/me`, `/health` to the backend, so the page and the API share one origin. The LAN origin must be in `DEV_EXTRA_ORIGINS`.
 - **Observed in the browser (desktop Chrome engine, local):** typed turn, warm: first voice 2.6 s, total 4.6 s; first turn after a restart 7.9 s.
 
+## 014 — Slice 3a: Track 2 feedback on the backend (2026-11-12)
+- **Own model variable:** `GEMINI_FEEDBACK_MODEL` (`gemini-3.5-flash-lite`, chosen by the author) for Track 2 and `pron_retry`; the utility model keeps summaries and is used for feedback once over budget. Usage rows use role `feedback` with `PRICE_FEEDBACK_*`. SPEC §2/§5 updated.
+- **Structured output:** the call sends `response_json_schema`. Without it the model once returned malformed JSON (an extra `]`) and the correction was lost. Pydantic still validates every item.
+- **Explanation language:** the prompt states twice that `r`, `p` and `tip` are in the native language, with a style example in that language. Without this the rule once came back in English.
+- **Anti-hallucination filters:** a grammar item whose `e` is not in the message, or whose correction equals the original, is dropped; a pronunciation item for a word not in the transcript, or "heard" exactly as written, is dropped. Max 3 + 3.
+- **Track 2 is not cancelled by barge-in** and is stored on `messages.feedback`. Regrade only for the learner's own messages of the current session.
+- **Recast:** voice turns with the setting on send the audio to the chat model plus a recast rule; typed turns never do.
+- **Real check (2026-11-12, synthetic clips):** grammar correct in both directions (PT→PL: dwa koty, jeden pies, do sklepu — explained in Portuguese; PL→PT: gosto, da praia, fui — explained in Polish). **Pronunciation is unreliable**: on a native TTS voice the model still invented issues (e.g. an "ł" tip for "sklep"). Known limitation; tune with real clips via `stt_eval.py`, consider a stronger model for pronunciation later.
+- **Test fix found here:** ending a read-only DB session without committing kept SQLite locked for seconds on WebSocket close; regrade now always ends its transaction.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |
@@ -95,5 +105,6 @@ Short records: context → decision → consequence. Newest at the bottom.
 | `GEMINI_CHAT_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (text/audio) / 2.50 out per 1M | 2026-11-12 |
 | `GEMINI_UTILITY_MODEL` | `gemini-3.1-flash-lite` | US$ 0.25 in (0.50 audio) / 1.50 out per 1M | 2026-11-12 |
 | `GEMINI_STT_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (audio) per 1M | 2026-11-12 |
+| `GEMINI_FEEDBACK_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (text/audio) / 2.50 out per 1M | 2026-11-12 |
 | `TTS_PROVIDER` (after benchmark) | `google` | free tier 1M chars/month | 2026-11-12 |
 | TTS model / plan | Chirp 3 HD, voices Kore (F) and Charon (M), OGG_OPUS | free tier (`TTS_MONTHLY_CHARS=1000000`, `PRICE_TTS_PER_1K_CHARS=0`) | 2026-11-12 |

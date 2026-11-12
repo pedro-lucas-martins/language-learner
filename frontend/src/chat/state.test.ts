@@ -118,4 +118,19 @@ describe("chatReducer", () => {
     expect(s.awaitingReply).toBe(false);
     expect(s.messages[1]).toMatchObject({ text: "Cze", streaming: false });
   });
+
+  it("stores feedback per message and a regrade replaces it", () => {
+    const first = {
+      type: "feedback" as const,
+      message_id: "u1",
+      source: "audio" as const,
+      ok: false,
+      errs: [{ e: "dwa kot", c: "dwa koty", r: "plural", p: "" }],
+      pron: [],
+    };
+    let s = apply(initialChatState, first);
+    expect(s.feedback.u1?.errs[0]?.c).toBe("dwa koty");
+    s = apply(s, { ...first, source: "text", ok: true, errs: [] });
+    expect(s.feedback.u1).toEqual({ source: "text", ok: true, errs: [], pron: [] });
+  });
 });

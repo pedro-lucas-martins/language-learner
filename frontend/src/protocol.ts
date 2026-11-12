@@ -21,6 +21,8 @@ export type ClientMsg =
   | { type: "auth"; token: string }
   | { type: "user_text"; text: string }
   | { type: "set_level"; level: Level }
+  | { type: "regrade"; message_id: string; text: string }
+  | { type: "set_recast"; enabled: boolean }
   | {
       type: "start_of_speech";
       mime: string;
@@ -39,6 +41,25 @@ export interface UserInfo {
   target_lang: Lang;
   level: Level;
   recast_pronunciation: boolean;
+}
+
+/** One grammar mistake (SPEC §5); explanations are in the learner's native language. */
+export interface GrammarError {
+  /** The wrong substring, as written/said. */
+  e: string;
+  /** Corrected form. */
+  c: string;
+  /** Short rule. */
+  r: string;
+  /** PT⇄PL contrast tip (may be empty). */
+  p: string;
+}
+
+export interface PronIssue {
+  w: string;
+  heard: string;
+  tip: string;
+  sev: "major" | "minor";
 }
 
 export type ServerMsg =
@@ -74,6 +95,14 @@ export type ServerMsg =
       tts_chars_allowance: number;
       tts_provider_active: string;
     }
+  | {
+      type: "feedback";
+      message_id: string;
+      source: "audio" | "text";
+      ok: boolean;
+      errs: GrammarError[];
+      pron: PronIssue[];
+    }
   | { type: "error"; code: ErrorCode; message: string };
 
 const SERVER_TYPES = new Set<ServerMsg["type"]>([
@@ -86,6 +115,7 @@ const SERVER_TYPES = new Set<ServerMsg["type"]>([
   "tts_fallback",
   "interrupted",
   "metrics",
+  "feedback",
   "usage",
   "error",
 ]);

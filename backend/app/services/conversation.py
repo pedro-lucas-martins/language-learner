@@ -29,6 +29,7 @@ from app.protocol import (
     AiTextDoneMsg,
     AudioMetaMsg,
     ErrorMsg,
+    FeedbackMsg,
     InterruptedMsg,
     MetricsMsg,
     TranscriptMsg,
@@ -37,8 +38,10 @@ from app.protocol import (
     UserInfo,
     UserUpdatedMsg,
 )
+from app.services import feedback as feedback_svc
 from app.services import usage as usage_svc
 from app.services.llm import (
+    AudioInput,
     LlmError,
     LlmProvider,
     LlmUsage,
@@ -55,7 +58,7 @@ from app.services.prompts import (
     truncate_words,
 )
 from app.services.sentence_buffer import SentenceBuffer
-from app.services.stt_service import SttError, estimate_seconds, transcribe
+from app.services.stt_service import SttError, estimate_seconds, gemini_mime, transcribe
 from app.services.tts.chain import TtsChain, TtsChunk, TtsUnavailable
 
 log = logging.getLogger(__name__)
@@ -223,6 +226,47 @@ class Conversation:
 
     # --- commands -------------------------------------------------------------------
 
+    async def set_recast(self, enabled: bool) -> None:
+        """Pronunciation recast in Track 1 on/off (SPEC §4.1)."""
+        async with session_factory()() as db:
+            user = await db.get(User, self.learner.id)
+            if user is None:
+                await self._error("bad_request")
+                return
+            user.recast_pronunciation = enabled
+            await db.commit()
+        self.learner.recast_pronunciation = enabled
+        await self.send(UserUpdatedMsg(user=self.learner.info()))
+
+    async def regrade(self, message_id: str, text: str) -> None:
+        """The learner fixed the transcript of one of their messages: re-run grammar only."""
+        text = text.strip()
+        try:
+            msg_uuid = uuid.UUID(message_id)
+        except ValueError:
+            await self._error("bad_request")
+            return
+        async with session_factory()() as db:
+            msg = await db.get(Message, msg_uuid)
+            allowed = (
+                msg is not None
+                and msg.session_id == self.session_id
+                and msg.role == "user"
+                and bool(text)
+            )
+            if allowed:
+                assert msg is not None
+                msg.text = text
+            await db.commit()  # also ends the read transaction when nothing changed
+        if not allowed:
+            await self._error("bad_request")
+            return
+        snap = await self._snapshot()
+        if snap.daily_cap_reached:
+            await self._error("quota_exceeded")
+            return
+        self._spawn_feedback(msg_uuid, text, None, budget_exceeded=snap.budget_exceeded)
+
     async def set_level(self, level: str) -> None:
         async with session_factory()() as db:
             user = await db.get(User, self.learner.id)
@@ -315,11 +359,24 @@ class Conversation:
             await self._error("not_configured" if exc.code == "not_configured" else "stt_failed")
             return
         timings.stt_ms = _ms(timings.started)
-        await self._respond(result.text, snap, timings)
+        await self._respond(
+            result.text, snap, timings, audio=AudioInput(data=audio, mime=gemini_mime(mime))
+        )
 
-    async def _respond(self, text: str, snap: usage_svc.UsageSnapshot, timings: Timings) -> None:
+    async def _respond(
+        self,
+        text: str,
+        snap: usage_svc.UsageSnapshot,
+        timings: Timings,
+        *,
+        audio: AudioInput | None = None,
+    ) -> None:
         user_msg_id = await self._persist(role="user", text=text)
         await self.send(TranscriptMsg(message_id=str(user_msg_id), text=text))
+        # Track 2 runs beside the reply and survives barge-in (SPEC §5).
+        if feedback_svc.needs_feedback(text):
+            self._spawn_feedback(user_msg_id, text, audio, budget_exceeded=snap.budget_exceeded)
+        recast_audio = audio if self.learner.recast_pronunciation else None
 
         ai_msg_id = uuid.uuid4()
         self._turn_ai_id = ai_msg_id
@@ -346,6 +403,7 @@ class Conversation:
                 budget_exceeded=snap.budget_exceeded,
                 on_delta=on_delta,
                 timings=timings,
+                audio=recast_audio,
             )
         except asyncio.CancelledError:
             if speaker is not None:
@@ -454,6 +512,7 @@ class Conversation:
         budget_exceeded: bool,
         on_delta: Callable[[str], None] | None = None,
         timings: Timings | None = None,
+        audio: AudioInput | None = None,
     ) -> str | None:
         system = chat_system_prompt(
             target_lang=self.learner.target_lang,
@@ -461,6 +520,7 @@ class Conversation:
             level=self.learner.level,
             user_facts=self.learner.user_facts,
             summary=self.memory.summary,
+            recast=audio is not None,
         )
         history: list[tuple[str, str]] = []
         for turn in self.memory.context_turns():
@@ -477,6 +537,7 @@ class Conversation:
                 history=history,  # type: ignore[arg-type]
                 max_output_tokens=CHAT_MAX_OUTPUT_TOKENS,
                 temperature=CHAT_TEMPERATURE,
+                audio=audio,
             ):
                 if isinstance(event, TextDelta):
                     if timings is not None and timings.llm_first_token_ms is None:
@@ -501,6 +562,60 @@ class Conversation:
             await self._error("provider_unavailable")
             return None
         return reply
+
+    # --- Track 2: feedback (SPEC §5) ------------------------------------------------------
+
+    def _spawn_feedback(
+        self,
+        message_id: uuid.UUID,
+        text: str,
+        audio: AudioInput | None,
+        *,
+        budget_exceeded: bool,
+    ) -> None:
+        task = asyncio.create_task(
+            self._feedback(message_id, text, audio, budget_exceeded=budget_exceeded)
+        )
+        self._background.add(task)
+        task.add_done_callback(self._background.discard)
+
+    async def _feedback(
+        self,
+        message_id: uuid.UUID,
+        text: str,
+        audio: AudioInput | None,
+        *,
+        budget_exceeded: bool,
+    ) -> None:
+        try:
+            result = await feedback_svc.analyze(
+                self.llm,
+                self.settings,
+                text=text,
+                audio=audio,
+                target_lang=self.learner.target_lang,
+                native_lang=self.learner.native_lang,
+                budget_exceeded=budget_exceeded,
+                record=self._record_llm,
+            )
+            if result is None:
+                return
+            async with session_factory()() as db:
+                msg = await db.get(Message, message_id)
+                if msg is not None:
+                    msg.feedback = result.as_json()
+                    await db.commit()
+            await self.send(
+                FeedbackMsg(
+                    message_id=str(message_id),
+                    source="audio" if audio is not None else "text",
+                    ok=result.ok,
+                    errs=result.errs,
+                    pron=result.pron,
+                )
+            )
+        except Exception:  # noqa: BLE001 — feedback must never break the conversation
+            log.exception("Feedback task failed")
 
     # --- persistence & usage ----------------------------------------------------------
 

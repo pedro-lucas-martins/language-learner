@@ -2,7 +2,7 @@
 
 Describes what exists **now**. Target design lives in [`SPEC.md`](SPEC.md).
 
-_Last updated: slice 2 (voice conversation: backend and browser)._
+_Last updated: slice 3a (Track 2 feedback, recast and regrade on the backend; panel UI in 3c)._
 
 ## Overview
 
@@ -21,6 +21,16 @@ browser (React)  ──WebSocket /ws──▶  FastAPI  ──▶  Gemini (chat 
 
 The turn runs as an `asyncio` task. `user_started_speaking`, a new utterance or a typed message
 cancels it (LLM and TTS); the server sends `interrupted` and keeps the partial reply in history.
+
+## Track 2: feedback (SPEC §5)
+
+For every learner message with ≥ 3 words a background task (not cancelled by barge-in) calls
+`GEMINI_FEEDBACK_MODEL` with a JSON schema: audio + transcript on voice turns (grammar and
+pronunciation), text only for typed turns and regrades (grammar only). The result is validated,
+filtered (`feedback.py`), stored on `messages.feedback` and sent as `feedback`. Explanations are
+in the learner's native language. `regrade` edits a message's text and re-runs grammar.
+`set_recast` toggles the pronunciation recast: when on, voice turns also send the audio to the
+chat model with a recast rule.
 
 ## A text turn
 
@@ -49,7 +59,7 @@ cancels it (LLM and TTS); the server sends `interrupted` and keeps the partial r
 | `app/config.py` | All settings from env. Model names, TTS provider + voices, prices, caps |
 | `app/security.py` | `is_allowed_origin()` for REST CORS and the WebSocket check |
 | `app/database.py` | Async SQLAlchemy engine/session factory (NullPool for SQLite in tests) |
-| `app/models.py` | `users`, `chat_sessions`, `messages`, `usage_events` |
+| `app/models.py` | `users`, `chat_sessions`, `messages` (+ `feedback`), `usage_events`, `tts_cache`, `flashcards` |
 | `app/protocol.py` | Pydantic models of the WebSocket protocol (text subset) |
 | `app/i18n.py` | Server error messages in pt-BR and pl-PL |
 | `app/routers/ws_chat.py` | `/ws`: origin check, auth, message loop |
@@ -61,6 +71,7 @@ cancels it (LLM and TTS); the server sends `interrupted` and keeps the partial r
 | `app/services/usage.py` | `usage_events` rows, daily call cap, monthly spend estimate |
 | `app/services/conversation.py` | Per-socket orchestrator: turn tasks, barge-in, LLM → sentences → TTS, metrics |
 | `app/services/stt_service.py` | Gemini speech-to-text: verbatim prompt, retry, audio seconds |
+| `app/services/feedback.py` | Track 2 prompts per direction, JSON schema, validation and filters |
 | `app/services/sentence_buffer.py` | Splits the streamed reply into sentences (decimals, dates, abbreviations) |
 | `app/services/tts/base.py` | `TtsProvider` interface, `TtsError`, first-byte/total timeouts, voice choice |
 | `app/services/tts/google.py` | Google Chirp 3 HD via gRPC streaming, OGG_OPUS output |
@@ -68,7 +79,7 @@ cancels it (LLM and TTS); the server sends `interrupted` and keeps the partial r
 | `app/services/tts/edge.py` | edge-tts, the free fallback (MP3) |
 | `app/services/tts/chain.py` | Active provider → edge-tts → `TtsUnavailable` (browser speaks); retry once |
 | `app/services/tts/cache.py` | `tts_cache` table access, sha256 key, LRU eviction by `TTS_CACHE_MAX_MB` |
-| `alembic/` | Migrations (`0001_initial`, `0002_tts_cache`) |
+| `alembic/` | Migrations (`0001_initial`, `0002_tts_cache`, `0003_feedback_flashcards`) |
 | `scripts/create_user.py` | Creates a learner and prints the token once |
 | `scripts/stt_eval.py` | Runs your recorded clips through the STT and compares with what you said |
 | `scripts/tts_bench.py` | TTS benchmark: TTFA per provider × language, blind A/B page, asks before spending |
@@ -119,6 +130,8 @@ The spend estimate multiplies summed usage by the `PRICE_*` settings.
 
 - **STT normalization:** LLM-based STT may "fix" the learner's grammar (seen: "minha amigo" →
   "meu amigo"). The prompt asks for verbatim output; the editable transcript arrives in slice 3.
+- **Pronunciation feedback is a qualitative LLM judgment** (no phoneme scores). It can miss
+  issues or invent them, even on native audio. Grammar feedback is much more reliable.
 - **Volume VAD** can be fooled by loud background noise; push-to-talk always works.
 - **iOS:** Google's audio is Ogg/Opus; older iOS versions may not decode it (the sentence is
   skipped). Check on the real phone.

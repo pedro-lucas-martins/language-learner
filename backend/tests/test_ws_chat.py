@@ -48,7 +48,7 @@ def _login(ws: WebSocketTestSession, token: str) -> dict[str, Any]:
     return ready
 
 
-AUDIO_EVENTS = {"audio_meta", "tts_fallback", "metrics"}
+AUDIO_EVENTS = {"audio_meta", "tts_fallback", "metrics", "feedback"}  # covered elsewhere
 
 
 def _say(ws: WebSocketTestSession, text: str) -> list[dict[str, Any]]:

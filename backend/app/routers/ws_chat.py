@@ -15,7 +15,9 @@ from app.protocol import (
     EndOfSpeechMsg,
     ErrorMsg,
     ReadyMsg,
+    RegradeMsg,
     SetLevelMsg,
+    SetRecastMsg,
     StartOfSpeechMsg,
     UserStartedSpeakingMsg,
     UserTextMsg,
@@ -127,6 +129,10 @@ async def chat_socket(websocket: WebSocket) -> None:
                 await conversation.submit_text(msg.text)
             elif isinstance(msg, SetLevelMsg):
                 await conversation.set_level(msg.level)
+            elif isinstance(msg, SetRecastMsg):
+                await conversation.set_recast(msg.enabled)
+            elif isinstance(msg, RegradeMsg):
+                await conversation.regrade(msg.message_id, msg.text)
             elif isinstance(msg, StartOfSpeechMsg):
                 if msg.purpose != "utterance":
                     await bad_request()  # pron_retry arrives in slice 3

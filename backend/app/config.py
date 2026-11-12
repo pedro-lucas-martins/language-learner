@@ -69,6 +69,8 @@ class Settings(BaseSettings):
     gemini_chat_model: str = ""
     gemini_utility_model: str = ""
     gemini_stt_model: str = ""
+    # Track 2: grammar + pronunciation feedback and pron_retry judgments (SPEC §5).
+    gemini_feedback_model: str = ""
     # Optional: MINIMAL | LOW | MEDIUM | HIGH. Empty = model default. Lower = faster replies.
     gemini_thinking_level: str = ""
 
@@ -100,6 +102,8 @@ class Settings(BaseSettings):
     price_utility_input_per_m: float = Field(default=0.0, ge=0)
     price_utility_output_per_m: float = Field(default=0.0, ge=0)
     price_stt_audio_input_per_m: float = Field(default=0.0, ge=0)
+    price_feedback_input_per_m: float = Field(default=0.0, ge=0)
+    price_feedback_output_per_m: float = Field(default=0.0, ge=0)
     price_tts_per_1k_chars: float = Field(default=0.0, ge=0)
     daily_llm_calls_per_user: int = Field(default=400, ge=0)
     daily_stt_seconds_per_user: int = Field(default=3600, ge=0)

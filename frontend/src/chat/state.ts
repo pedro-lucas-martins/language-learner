@@ -1,9 +1,19 @@
 import {
   CLOSE_FORBIDDEN_ORIGIN,
   CLOSE_UNAUTHORIZED,
+  type GrammarError,
+  type PronIssue,
   type ServerMsg,
   type UserInfo,
 } from "../protocol.ts";
+
+/** Track 2 result for one of the learner's messages (SPEC §5). */
+export interface Feedback {
+  source: "audio" | "text";
+  ok: boolean;
+  errs: GrammarError[];
+  pron: PronIssue[];
+}
 
 export interface ChatMessage {
   id: string;
@@ -40,6 +50,8 @@ export interface ChatState {
   error: string | null;
   usage: Usage | null;
   metrics: Metrics | null;
+  /** Feedback by learner message id; a regrade replaces the entry. */
+  feedback: Record<string, Feedback>;
 }
 
 export type ChatAction =
@@ -58,6 +70,7 @@ export const initialChatState: ChatState = {
   error: null,
   usage: null,
   metrics: null,
+  feedback: {},
 };
 
 function finishStreaming(messages: ChatMessage[]): ChatMessage[] {
@@ -164,6 +177,15 @@ function applyServerMsg(state: ChatState, msg: ServerMsg): ChatState {
           llmFirstTokenMs: msg.llm_first_token_ms,
           firstAudioMs: msg.first_audio_ms,
           totalMs: msg.total_ms,
+        },
+      };
+
+    case "feedback":
+      return {
+        ...state,
+        feedback: {
+          ...state.feedback,
+          [msg.message_id]: { source: msg.source, ok: msg.ok, errs: msg.errs, pron: msg.pron },
         },
       };
 

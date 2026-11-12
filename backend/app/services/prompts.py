@@ -45,10 +45,25 @@ _LEVEL_RULES = {
 }
 
 
+RECAST_RULE = (
+    "Pronunciation recast: the learner's last message comes with their recorded voice and its "
+    "transcript. If they clearly mispronounced a word, reuse that same word, correctly, "
+    "naturally in your reply so they hear it said right, the way a friend would echo it. At "
+    "most once per reply. Never say they pronounced it wrong and never explain anything. If "
+    "nothing was clearly mispronounced, just reply normally."
+)
+
+
 def chat_system_prompt(
-    *, target_lang: str, native_lang: str, level: str, user_facts: str, summary: str
+    *,
+    target_lang: str,
+    native_lang: str,
+    level: str,
+    user_facts: str,
+    summary: str,
+    recast: bool = False,
 ) -> str:
-    """System prompt for Track 1 (conversation)."""
+    """System prompt for Track 1 (conversation). `recast`: the last message has audio."""
     lang = LANG_NAMES[target_lang]
     static = (
         f"{_PERSONA[target_lang]}\n\n"
@@ -64,6 +79,8 @@ def chat_system_prompt(
         f"{_DIRECTION_NOTES[target_lang]}"
     )
     parts = [static, _LEVEL_RULES[level]]
+    if recast:
+        parts.append(RECAST_RULE)
     if user_facts.strip():
         parts.append(f"What you know about the learner from earlier conversations:\n{user_facts}")
     if summary.strip():

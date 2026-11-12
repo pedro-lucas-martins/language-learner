@@ -50,6 +50,12 @@ class StreamEnd:
 StreamEvent = TextDelta | StreamEnd
 
 
+@dataclass(frozen=True)
+class AudioInput:
+    data: bytes
+    mime: str
+
+
 class LlmProvider(Protocol):
     def stream(
         self,
@@ -59,8 +65,12 @@ class LlmProvider(Protocol):
         history: Sequence[tuple[ChatRole, str]],
         max_output_tokens: int,
         temperature: float,
+        audio: AudioInput | None = None,
     ) -> AsyncIterator[StreamEvent]:
-        """Yield TextDelta chunks, then exactly one StreamEnd. Raise LlmError on failure."""
+        """Yield TextDelta chunks, then exactly one StreamEnd. Raise LlmError on failure.
+
+        `audio`, when given, is attached to the last user message (pronunciation recast).
+        """
         ...
 
     async def complete(
@@ -86,6 +96,23 @@ class LlmProvider(Protocol):
         """Speech-to-text with temperature 0 (SPEC §5). Raise LlmError on failure."""
         ...
 
+    async def analyze(
+        self,
+        *,
+        model: str,
+        system: str,
+        prompt: str,
+        audio: AudioInput | None,
+        max_output_tokens: int,
+        temperature: float,
+        json_schema: dict[str, object] | None = None,
+    ) -> tuple[str, LlmUsage]:
+        """One JSON answer about a prompt and optional audio (Track 2). Raise LlmError.
+
+        `json_schema`, when given, is enforced by the provider (structured output).
+        """
+        ...
+
 
 # --- Gemini -------------------------------------------------------------------
 
@@ -105,7 +132,15 @@ class GeminiProvider:
             self._client = genai.Client(api_key=self._api_key)
         return self._client
 
-    def _config(self, system: str, max_output_tokens: int, temperature: float):  # type: ignore[no-untyped-def]
+    def _config(  # type: ignore[no-untyped-def]
+        self,
+        system: str,
+        max_output_tokens: int,
+        temperature: float,
+        *,
+        json_output: bool = False,
+        json_schema: dict[str, object] | None = None,
+    ):
         from google.genai import types
 
         thinking = (
@@ -118,16 +153,25 @@ class GeminiProvider:
             max_output_tokens=max_output_tokens,
             temperature=temperature,
             thinking_config=thinking,
+            response_mime_type="application/json" if json_output else None,
+            response_json_schema=json_schema,
         )
 
     @staticmethod
-    def _contents(history: Sequence[tuple[ChatRole, str]]):  # type: ignore[no-untyped-def]
+    def _contents(  # type: ignore[no-untyped-def]
+        history: Sequence[tuple[ChatRole, str]], audio: AudioInput | None = None
+    ):
         from google.genai import types
 
-        return [
+        contents = [
             types.Content(role=role, parts=[types.Part.from_text(text=text)])
             for role, text in history
         ]
+        if audio is not None and contents and contents[-1].role == "user":
+            contents[-1].parts.insert(
+                0, types.Part.from_bytes(data=audio.data, mime_type=audio.mime)
+            )
+        return contents
 
     @staticmethod
     def _usage(metadata) -> LlmUsage:  # type: ignore[no-untyped-def]
@@ -170,6 +214,7 @@ class GeminiProvider:
         history: Sequence[tuple[ChatRole, str]],
         max_output_tokens: int,
         temperature: float,
+        audio: AudioInput | None = None,
     ) -> AsyncIterator[StreamEvent]:
         if not model:
             raise LlmError("not_configured", "model name is empty")
@@ -180,7 +225,7 @@ class GeminiProvider:
                 response = await asyncio.wait_for(
                     client.aio.models.generate_content_stream(
                         model=model,
-                        contents=self._contents(history),
+                        contents=self._contents(history, audio),
                         config=self._config(system, max_output_tokens, temperature),
                     ),
                     FIRST_CHUNK_TIMEOUT_S,
@@ -251,6 +296,41 @@ class GeminiProvider:
             raise self._map_error(exc) from exc
         return (response.text or "").strip(), self._usage(response.usage_metadata)
 
+    async def analyze(
+        self,
+        *,
+        model: str,
+        system: str,
+        prompt: str,
+        audio: AudioInput | None,
+        max_output_tokens: int,
+        temperature: float,
+        json_schema: dict[str, object] | None = None,
+    ) -> tuple[str, LlmUsage]:
+        from google.genai import types
+
+        if not model:
+            raise LlmError("not_configured", "model name is empty")
+        parts = [types.Part.from_text(text=prompt)]
+        if audio is not None:
+            parts.insert(0, types.Part.from_bytes(data=audio.data, mime_type=audio.mime))
+        try:
+            async with asyncio.timeout(TOTAL_TIMEOUT_S):
+                response = await self._get_client().aio.models.generate_content(
+                    model=model,
+                    contents=[types.Content(role="user", parts=parts)],
+                    config=self._config(
+                        system,
+                        max_output_tokens,
+                        temperature,
+                        json_output=True,
+                        json_schema=json_schema,
+                    ),
+                )
+        except Exception as exc:  # noqa: BLE001
+            raise self._map_error(exc) from exc
+        return (response.text or "").strip(), self._usage(response.usage_metadata)
+
 
 # --- retry + fallback ----------------------------------------------------------
 
@@ -279,6 +359,7 @@ async def stream_with_fallback(
     history: Sequence[tuple[ChatRole, str]],
     max_output_tokens: int,
     temperature: float,
+    audio: AudioInput | None = None,
 ) -> AsyncIterator[tuple[ModelChoice, StreamEvent]]:
     """Stream from the first model that works.
 
@@ -299,6 +380,7 @@ async def stream_with_fallback(
                     history=history,
                     max_output_tokens=max_output_tokens,
                     temperature=temperature,
+                    audio=audio,
                 ):
                     if isinstance(event, TextDelta):
                         started = True
@@ -331,6 +413,9 @@ class FakeLlm:
         transcript: str = "Cześć, mam na imię Pedro.",
         transcribe_failures: list[LlmErrorCode] | None = None,
         stream_delay_s: float = 0.0,
+        analysis: str = '{"ok": true}',
+        analyze_failures: list[LlmErrorCode] | None = None,
+        analyze_delay_s: float = 0.0,
     ) -> None:
         self.reply = reply
         self.summary = summary
@@ -341,6 +426,10 @@ class FakeLlm:
         self.stream_calls: list[dict[str, object]] = []
         self.complete_calls: list[dict[str, object]] = []
         self.transcribe_calls: list[dict[str, object]] = []
+        self.analysis = analysis
+        self.analyze_failures = list(analyze_failures or [])
+        self.analyze_delay_s = analyze_delay_s
+        self.analyze_calls: list[dict[str, object]] = []
 
     async def stream(
         self,
@@ -350,8 +439,11 @@ class FakeLlm:
         history: Sequence[tuple[ChatRole, str]],
         max_output_tokens: int,
         temperature: float,
+        audio: AudioInput | None = None,
     ) -> AsyncIterator[StreamEvent]:
-        self.stream_calls.append({"model": model, "system": system, "history": list(history)})
+        self.stream_calls.append(
+            {"model": model, "system": system, "history": list(history), "audio": audio}
+        )
         if model in self.fail_models:
             raise LlmError(self.fail_models[model], "fake failure")
         words = self.reply.split(" ")
@@ -397,3 +489,29 @@ class FakeLlm:
         if self.transcribe_failures:
             raise LlmError(self.transcribe_failures.pop(0), "fake failure")
         return self.transcript, LlmUsage(input_tokens=200, output_tokens=12, audio_tokens=160)
+
+    async def analyze(
+        self,
+        *,
+        model: str,
+        system: str,
+        prompt: str,
+        audio: AudioInput | None,
+        max_output_tokens: int,
+        temperature: float,
+        json_schema: dict[str, object] | None = None,
+    ) -> tuple[str, LlmUsage]:
+        self.analyze_calls.append(
+            {
+                "model": model,
+                "system": system,
+                "prompt": prompt,
+                "audio": audio,
+                "json_schema": json_schema,
+            }
+        )
+        if self.analyze_delay_s:
+            await asyncio.sleep(self.analyze_delay_s)
+        if self.analyze_failures:
+            raise LlmError(self.analyze_failures.pop(0), "fake failure")
+        return self.analysis, LlmUsage(input_tokens=300, output_tokens=60)
