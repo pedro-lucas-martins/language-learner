@@ -1,4 +1,4 @@
-"""Database tables (SPEC §3, §4). Flashcards and the TTS cache arrive in later slices."""
+"""Database tables (SPEC §3, §4, §6). Flashcards arrive in a later slice."""
 
 import uuid
 from datetime import UTC, datetime
@@ -11,6 +11,8 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Index,
+    Integer,
+    LargeBinary,
     String,
     Text,
     Uuid,
@@ -100,3 +102,19 @@ class UsageEvent(Base):
     model: Mapped[str] = mapped_column(String(80), default="")
     amount: Mapped[float] = mapped_column(Float)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class TtsCache(Base):
+    """Synthesized audio, keyed by sha256(provider + voice + model + rate + text) (SPEC §6)."""
+
+    __tablename__ = "tts_cache"
+    __table_args__ = (Index("ix_tts_cache_last_used", "last_used_at"),)
+
+    hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(16))
+    voice_id: Mapped[str] = mapped_column(String(120))
+    model: Mapped[str] = mapped_column(String(80))
+    mime: Mapped[str] = mapped_column(String(40))
+    audio: Mapped[bytes] = mapped_column(LargeBinary)
+    bytes: Mapped[int] = mapped_column(Integer)
+    last_used_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

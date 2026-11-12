@@ -1,0 +1,74 @@
+{
+  "pl-PL": {
+    "sentences": [
+      {"id": "pl01", "level": "A1", "text": "Cześć! Mam na imię Ola i mieszkam w Krakowie. A ty, gdzie mieszkasz?"},
+      {"id": "pl02", "level": "A1", "text": "Dzisiaj jest bardzo ładna pogoda. Lubisz spacerować w parku?"},
+      {"id": "pl03", "level": "A1", "text": "Ja piję kawę z mlekiem każdego ranka. A ty wolisz kawę czy herbatę?"},
+      {"id": "pl04", "level": "A1", "text": "Mój brat ma psa, który nazywa się Burek. Masz jakieś zwierzę w domu?"},
+      {"id": "pl05", "level": "A2", "text": "Wczoraj byłam w kinie z koleżanką i oglądałyśmy polską komedię. Często chodzisz do kina?"},
+      {"id": "pl06", "level": "A2", "text": "W weekend chcę pojechać nad morze, do Gdańska. Byłeś kiedyś nad Bałtykiem?"},
+      {"id": "pl07", "level": "A2", "text": "Moja babcia robi najlepsze pierogi z kapustą i grzybami. Jakie jest twoje ulubione jedzenie?"},
+      {"id": "pl08", "level": "A2", "text": "Pracuję w biurze od dziewiątej do piątej, więc wieczorem jestem zmęczona. O której kończysz pracę?"},
+      {"id": "pl09", "level": "B1", "text": "Szczerze mówiąc, zima w Polsce bywa długa i szara, ale święta mają wyjątkowy klimat. Jak spędzasz grudzień?"},
+      {"id": "pl10", "level": "B1", "text": "Zastanawiam się, czy nie zapisać się na kurs gotowania, bo ciągle jem to samo. Umiesz dobrze gotować?"},
+      {"id": "pl11", "level": "B1", "text": "Gdybym miała więcej czasu, nauczyłabym się grać na gitarze. Czego chciałbyś się nauczyć?"},
+      {"id": "pl12", "level": "B1", "text": "Przeprowadziłam się niedawno i wciąż szukam dobrej piekarni w okolicy. Jak wygląda twoja dzielnica?"},
+      {"id": "pl13", "level": "B2", "text": "Coraz więcej moich znajomych pracuje zdalnie, choć niektórzy tęsknią za biurem. Co sądzisz o pracy z domu?"},
+      {"id": "pl14", "level": "B2", "text": "Przeczytałam ostatnio książkę, która kompletnie zmieniła moje podejście do oszczędzania. Czytasz czasem poradniki?"},
+      {"id": "pl15", "level": "B2", "text": "Wydaje mi się, że w dużych miastach ludzie żyją w ciągłym pośpiechu i rzadko odpoczywają. Zgadzasz się z tym?"},
+      {"id": "pl16", "level": "B2", "text": "Kiedy podróżuję, staram się unikać miejsc pełnych turystów i szukam małych, lokalnych knajpek. A ty jak podróżujesz?"},
+      {"id": "pl17", "level": "C1", "text": "No wiesz, to trochę jak szukanie igły w stogu siana, ale w końcu znalazłam idealne mieszkanie. Masz jakieś rady dla kogoś, kto się przeprowadza?"},
+      {"id": "pl18", "level": "C1", "text": "Nie da się ukryć, że sztuczna inteligencja wywraca rynek pracy do góry nogami. Myślisz, że twój zawód przetrwa?"},
+      {"id": "pl19", "level": "C1", "text": "Mój szef ma słomiany zapał: co tydzień nowy projekt, a żaden nie zostaje dokończony. Spotkałeś się z czymś takim?"},
+      {"id": "pl20", "level": "C1", "text": "Szczerze? Uważam, że media społecznościowe bardziej nas dzielą, niż łączą, choć oficjalnie mają odwrotny cel. Jakie jest twoje zdanie?"}
+    ],
+    "words": [
+      {"id": "plw01", "text": "szczęście"},
+      {"id": "plw02", "text": "źdźbło"},
+      {"id": "plw03", "text": "przyjaciel"},
+      {"id": "plw04", "text": "chrząszcz"},
+      {"id": "plw05", "text": "łóżko"},
+      {"id": "plw06", "text": "mąż"},
+      {"id": "plw07", "text": "języki"},
+      {"id": "plw08", "text": "dżdżownica"},
+      {"id": "plw09", "text": "cześć"},
+      {"id": "plw10", "text": "rzeczywiście"}
+    ]
+  },
+  "pt-BR": {
+    "sentences": [
+      {"id": "pt01", "level": "A1", "text": "Oi! Meu nome é Ana e eu moro em São Paulo. E você, onde mora?"},
+      {"id": "pt02", "level": "A1", "text": "Hoje está muito calor aqui no Rio. Você gosta de ir à praia?"},
+      {"id": "pt03", "level": "A1", "text": "Eu tomo café com leite todas as manhãs. Você prefere café ou chá?"},
+      {"id": "pt04", "level": "A1", "text": "Minha irmã tem um gato branco que se chama Nino. Você tem algum bicho de estimação?"},
+      {"id": "pt05", "level": "A2", "text": "Ontem eu fui ao cinema com uma amiga e a gente viu uma comédia brasileira. Você vai muito ao cinema?"},
+      {"id": "pt06", "level": "A2", "text": "No fim de semana quero viajar para Salvador com a minha família. Você já foi para a Bahia?"},
+      {"id": "pt07", "level": "A2", "text": "Minha avó faz o melhor pão de queijo do mundo. Qual é a sua comida favorita?"},
+      {"id": "pt08", "level": "A2", "text": "Eu trabalho das nove às seis, então à noite estou sempre cansado. Que horas você sai do trabalho?"},
+      {"id": "pt09", "level": "B1", "text": "Pra ser sincero, o trânsito de São Paulo me deixa louco, mas a cidade tem uma energia incrível. Como é o trânsito aí?"},
+      {"id": "pt10", "level": "B1", "text": "Estou pensando em fazer um curso de culinária, porque sempre como a mesma coisa. Você cozinha bem?"},
+      {"id": "pt11", "level": "B1", "text": "Se eu tivesse mais tempo, aprenderia a tocar violão. O que você gostaria de aprender?"},
+      {"id": "pt12", "level": "B1", "text": "Me mudei faz pouco tempo e ainda estou procurando uma boa padaria no bairro. Como é o seu bairro?"},
+      {"id": "pt13", "level": "B2", "text": "Cada vez mais amigos meus trabalham de casa, embora alguns sintam falta do escritório. O que você acha do trabalho remoto?"},
+      {"id": "pt14", "level": "B2", "text": "Li recentemente um livro que mudou completamente a minha relação com o dinheiro. Você costuma ler livros desse tipo?"},
+      {"id": "pt15", "level": "B2", "text": "Tenho a impressão de que nas cidades grandes as pessoas vivem correndo e quase não descansam. Você concorda?"},
+      {"id": "pt16", "level": "B2", "text": "Quando viajo, tento fugir dos pontos turísticos e procuro botecos pequenos e bem locais. E você, como gosta de viajar?"},
+      {"id": "pt17", "level": "C1", "text": "Olha, foi tipo procurar agulha no palheiro, mas no fim achei o apartamento perfeito. Você tem alguma dica pra quem vai se mudar?"},
+      {"id": "pt18", "level": "C1", "text": "Não dá pra negar que a inteligência artificial está virando o mercado de trabalho de cabeça pra baixo. Você acha que a sua profissão vai sobreviver?"},
+      {"id": "pt19", "level": "C1", "text": "Meu chefe é fogo de palha: toda semana inventa um projeto novo e nenhum vai pra frente. Já passou por algo parecido?"},
+      {"id": "pt20", "level": "C1", "text": "Sinceramente? Acho que as redes sociais mais separam do que unem, apesar de prometerem o contrário. Qual é a sua opinião?"}
+    ],
+    "words": [
+      {"id": "ptw01", "text": "pão"},
+      {"id": "ptw02", "text": "corações"},
+      {"id": "ptw03", "text": "mãe"},
+      {"id": "ptw04", "text": "avó"},
+      {"id": "ptw05", "text": "avô"},
+      {"id": "ptw06", "text": "trabalho"},
+      {"id": "ptw07", "text": "amanhã"},
+      {"id": "ptw08", "text": "carro"},
+      {"id": "ptw09", "text": "cidade"},
+      {"id": "ptw10", "text": "também"}
+    ]
+  }
+}

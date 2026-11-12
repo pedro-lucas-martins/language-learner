@@ -5,3 +5,6 @@ sqlalchemy[asyncio]==2.1.8
 asyncpg==0.32.0
 alembic==1.20.1
 google-genai==3.0.0
+httpx==0.28.1
+google-cloud-texttospeech==2.38.0
+edge-tts==7.3.1

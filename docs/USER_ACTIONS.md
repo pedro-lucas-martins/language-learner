@@ -36,6 +36,18 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
       escolher vozes na Voice Library (`ELEVENLABS_VOICES_PL/PT`) e o modelo Flash (`ELEVENLABS_MODEL`).
 - [x] Voice lists no formato `id:Nome,id:Nome`.
 
+## Fatia 2a — rodar o benchmark de voz
+
+- [ ] Com o Docker rodando (o banco precisa estar no ar), na pasta `backend/`:
+      ```bash
+      .venv/bin/python -m scripts.tts_bench --runs 2
+      ```
+      Ele mostra quantos caracteres vai gastar (~8.200 por provedor com `--runs 2`) e pede confirmação.
+      O plano Free do ElevenLabs tem poucos créditos por mês: prefira `--runs 2`.
+      Se ainda não tiver o ambiente: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -r requirements-dev.txt`.
+- [ ] Observação: no plano Free, o ElevenLabs só usa as vozes padrão pela API (Sarah e George, com sotaque
+      neutro). Vozes nativas polonesas e brasileiras da biblioteca exigem plano pago.
+
 ## Depois do benchmark
 
 - [ ] Ouvir a comparação às cegas (`bench_results/<data>/index.html`) e ver a latência no `report.md`.

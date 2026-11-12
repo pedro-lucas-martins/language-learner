@@ -26,11 +26,14 @@ services:
     environment:
       # Inside the compose network the database host is "db", not localhost.
       DATABASE_URL: postgresql+asyncpg://app:app@db:5432/app
+      # The Google service-account key is mounted read-only below (empty when not set).
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:+/secrets/gcp.json}
     command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     volumes:
       - ./backend/app:/app/app
       - ./backend/alembic:/app/alembic
       - ./backend/scripts:/app/scripts
+      - ${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:/secrets/gcp.json:ro
     ports:
       - "8000:8000"
     depends_on:

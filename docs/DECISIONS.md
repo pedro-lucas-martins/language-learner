@@ -49,6 +49,14 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Decision:** two TTS adapters only: `TTS_PROVIDER` = `google` | `elevenlabs`; the benchmark compares them blind as A/B. Amends 006.
 - **Consequence:** less adapter code and one fewer account; Cartesia can be re-added later behind the same `TtsProvider` interface.
 
+## 010 — Slice 2a: TTS adapters, formats and voices (2026-11-12)
+- **Google audio format:** `StreamingSynthesize` rejects MP3 ("Unsupported audio encoding", tested 2026-11-12), so the Google adapter streams **OGG_OPUS** (`audio/ogg;codecs=opus`). ElevenLabs and edge-tts send MP3. The client must play both.
+- **ElevenLabs on the Free plan cannot use Voice Library voices through the API** (HTTP 402 `paid_plan_required`). The benchmark uses premade multilingual voices (Sarah, George) with `language_code` set; native Polish/Brazilian voices need a paid plan.
+- **Fallback:** the chain only switches provider before the first audio byte; a failure mid-sentence stops that sentence instead of repeating it with another voice. The fallback keeps the voice's position in the list (female → female when lists are ordered alike).
+- **Usage:** one `tts_chars` row per request, written on the first audio byte (what providers bill). edge-tts rows use role `edge`, cost 0 and do not count toward the daily cap. Over 95% of `TTS_MONTHLY_CHARS` **or** the daily cap → free fallback.
+- **Input streaming** (feeding LLM tokens into a provider WebSocket) is left for later, per SPEC §6: one request per sentence in v1.
+- **Consequence:** the 3 s first-byte timeout can trip on a cold connection right after startup (the first sentence then uses edge-tts).
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |
@@ -61,6 +69,6 @@ Short records: context → decision → consequence. Newest at the bottom.
 |---|---|---|---|
 | `GEMINI_CHAT_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (text/audio) / 2.50 out per 1M | 2026-11-12 |
 | `GEMINI_UTILITY_MODEL` | `gemini-3.1-flash-lite` | US$ 0.25 in (0.50 audio) / 1.50 out per 1M | 2026-11-12 |
-| `GEMINI_STT_MODEL` | (slice 2) | | |
+| `GEMINI_STT_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (audio) per 1M | 2026-11-12 |
 | `TTS_PROVIDER` (after benchmark) | | | |
 | TTS model / plan | | | |

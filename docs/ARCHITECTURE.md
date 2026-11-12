@@ -2,7 +2,7 @@
 
 Describes what exists **now**. Target design lives in [`SPEC.md`](SPEC.md).
 
-_Last updated: slice 1 (text conversation)._
+_Last updated: slice 2a (TTS adapters and benchmark; voice not wired into the chat yet)._
 
 ## Overview
 
@@ -46,12 +46,25 @@ browser (React)  ──WebSocket /ws──▶  FastAPI  ──▶  Gemini (chat 
 | `app/services/memory.py` | Pure sliding window + pending buffer + summary bookkeeping |
 | `app/services/usage.py` | `usage_events` rows, daily call cap, monthly spend estimate |
 | `app/services/conversation.py` | Per-socket orchestrator for a turn |
-| `alembic/` | Migrations (`0001_initial`) |
+| `app/services/tts/base.py` | `TtsProvider` interface, `TtsError`, first-byte/total timeouts, voice choice |
+| `app/services/tts/google.py` | Google Chirp 3 HD via gRPC streaming, OGG_OPUS output |
+| `app/services/tts/elevenlabs.py` | ElevenLabs streaming over HTTP (`httpx`), MP3 output |
+| `app/services/tts/edge.py` | edge-tts, the free fallback (MP3) |
+| `app/services/tts/chain.py` | Active provider → edge-tts → `TtsUnavailable` (browser speaks); retry once |
+| `app/services/tts/cache.py` | `tts_cache` table access, sha256 key, LRU eviction by `TTS_CACHE_MAX_MB` |
+| `alembic/` | Migrations (`0001_initial`, `0002_tts_cache`) |
 | `scripts/create_user.py` | Creates a learner and prints the token once |
+| `scripts/tts_bench.py` | TTS benchmark: TTFA per provider × language, blind A/B page, asks before spending |
 
 **LLM fallback:** each model gets one retry for transient errors; then the next model in the
 chain (`GEMINI_CHAT_MODEL` → `GEMINI_UTILITY_MODEL`). When the monthly budget is reached
 only the utility model is used. Once text has been streamed, errors are not retried.
+
+**TTS chain:** the provider in `TTS_PROVIDER` is tried first (one retry for 429/5xx/timeout,
+3 s to first byte); before any audio is sent it can fall back to edge-tts; if that fails too the
+caller must ask the browser to speak (`TtsUnavailable`). Over 95% of `TTS_MONTHLY_CHARS` or over
+the daily character cap, edge-tts is used directly. A `tts_chars` row is written per request.
+Not yet called by the conversation (slice 2b).
 
 **Caps:** one `llm_in` row is written per LLM call; `DAILY_LLM_CALLS_PER_USER` counts them.
 The spend estimate multiplies summed usage by the `PRICE_*` settings.
@@ -79,5 +92,5 @@ The spend estimate multiplies summed usage by the `PRICE_*` settings.
 
 ## Not built yet
 
-Voice (STT/TTS), feedback track, pronunciation, topics, flashcards, user_facts updates,
+Voice in the conversation (STT, sentence buffer, audio over the WebSocket, client audio), feedback track, pronunciation, topics, flashcards, user_facts updates,
 responsive layouts, deploy. See SPEC §11.

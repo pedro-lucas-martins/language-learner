@@ -11,6 +11,9 @@ from app.config import Settings
 from app.models import UsageEvent
 from app.services.llm import LlmUsage
 
+# edge-tts is free: its characters are tracked but cost nothing and do not count toward caps.
+FREE_TTS_PROVIDER = "edge"
+
 
 def _start_of_day(now: datetime) -> datetime:
     return now.astimezone(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -40,6 +43,8 @@ def _unit_price(settings: Settings, kind: str, role: str) -> float:
     if kind == "llm_audio_in":
         return settings.price_stt_audio_input_per_m / per_m
     if kind == "tts_chars":
+        if role == FREE_TTS_PROVIDER:
+            return 0.0
         return settings.price_tts_per_1k_chars / 1000
     return 0.0
 
@@ -58,6 +63,27 @@ async def record_llm(
         ]
     )
     await db.commit()
+
+
+async def record_tts(
+    db: AsyncSession, *, user_id: uuid.UUID | None, provider: str, model: str, chars: int
+) -> None:
+    db.add(UsageEvent(user_id=user_id, kind="tts_chars", role=provider, model=model, amount=chars))
+    await db.commit()
+
+
+async def tts_chars_today(db: AsyncSession, user_id: uuid.UUID, now: datetime | None = None) -> int:
+    """Paid TTS characters today for one user (the free fallback is not counted)."""
+    since = _start_of_day(now or datetime.now(UTC))
+    total = await db.scalar(
+        select(func.sum(UsageEvent.amount)).where(
+            UsageEvent.user_id == user_id,
+            UsageEvent.kind == "tts_chars",
+            UsageEvent.role != FREE_TTS_PROVIDER,
+            UsageEvent.created_at >= since,
+        )
+    )
+    return int(total or 0)
 
 
 async def llm_calls_today(db: AsyncSession, user_id: uuid.UUID, now: datetime | None = None) -> int:
@@ -107,10 +133,21 @@ class UsageSnapshot:
     tts_provider_active: str
     llm_calls_today: int
     llm_calls_cap: int
+    tts_chars_today: int = 0
+    tts_chars_cap: int = 0
 
     @property
     def budget_exceeded(self) -> bool:
         return self.budget_usd > 0 and self.month_usd_est >= self.budget_usd
+
+    @property
+    def tts_over_allowance(self) -> bool:
+        """Switch to the free fallback: 95% of the monthly allowance or the daily cap (SPEC §1)."""
+        monthly = self.tts_chars_allowance > 0 and (
+            self.tts_chars_month >= 0.95 * self.tts_chars_allowance
+        )
+        daily = self.tts_chars_cap > 0 and self.tts_chars_today >= self.tts_chars_cap
+        return monthly or daily
 
     @property
     def daily_cap_reached(self) -> bool:
@@ -126,4 +163,6 @@ async def snapshot(db: AsyncSession, settings: Settings, user_id: uuid.UUID) -> 
         tts_provider_active=settings.tts_provider,
         llm_calls_today=await llm_calls_today(db, user_id),
         llm_calls_cap=settings.daily_llm_calls_per_user,
+        tts_chars_today=await tts_chars_today(db, user_id),
+        tts_chars_cap=settings.daily_tts_chars_per_user,
     )

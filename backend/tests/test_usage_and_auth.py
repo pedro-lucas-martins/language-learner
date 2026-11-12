@@ -78,3 +78,39 @@ async def test_daily_cap_and_budget_flags(sync_engine: Engine) -> None:
     assert snap.llm_calls_today == 2
     assert snap.daily_cap_reached
     assert snap.budget_exceeded
+
+
+async def test_tts_usage_prices_paid_providers_only(sync_engine: Engine) -> None:
+    settings = make_settings(price_tts_per_1k_chars=0.5)
+    async with session_factory()() as db:
+        await usage_svc.record_tts(db, user_id=None, provider="google", model="m", chars=2000)
+        await usage_svc.record_tts(db, user_id=None, provider="edge", model="edge", chars=5000)
+        assert round(await usage_svc.month_spend_usd(db, settings), 6) == 1.0
+        assert await usage_svc.tts_chars_month(db, "google") == 2000
+
+
+async def test_tts_over_allowance_at_95_percent_or_daily_cap(sync_engine: Engine) -> None:
+    add_user(sync_engine)
+    async with session_factory()() as db:
+        from sqlalchemy import select
+
+        from app.models import User
+
+        user = await db.scalar(select(User))
+        assert user is not None
+        await usage_svc.record_tts(db, user_id=user.id, provider="google", model="m", chars=94)
+        await usage_svc.record_tts(db, user_id=user.id, provider="edge", model="e", chars=500)
+        below = await usage_svc.snapshot(
+            db, make_settings(tts_monthly_chars=100, daily_tts_chars_per_user=0), user.id
+        )
+        await usage_svc.record_tts(db, user_id=user.id, provider="google", model="m", chars=1)
+        at_95 = await usage_svc.snapshot(
+            db, make_settings(tts_monthly_chars=100, daily_tts_chars_per_user=0), user.id
+        )
+        capped = await usage_svc.snapshot(
+            db, make_settings(tts_monthly_chars=0, daily_tts_chars_per_user=95), user.id
+        )
+    assert not below.tts_over_allowance
+    assert at_95.tts_over_allowance
+    assert capped.tts_chars_today == 95  # edge characters are not counted
+    assert capped.tts_over_allowance
