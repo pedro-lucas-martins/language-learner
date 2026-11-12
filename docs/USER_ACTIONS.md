@@ -28,13 +28,13 @@ Tudo o que precisa ser feito à mão (contas, chaves, comandos). Marque conforme
 Os dois provedores serão comparados com `backend/scripts/tts_bench.py`, só com planos gratuitos.
 O script mostra quantos caracteres vai gastar e pede confirmação antes de rodar.
 
-- [ ] **Google Cloud Text-to-Speech:** no mesmo projeto do Google Cloud do Gemini, ativar a
+- [x] **Google Cloud Text-to-Speech:** no mesmo projeto do Google Cloud do Gemini, ativar a
       *Cloud Text-to-Speech API*, criar uma *service account* com acesso à API, baixar a chave JSON
       para fora do repositório e apontar `GOOGLE_APPLICATION_CREDENTIALS` para ela.
       Escolher ≥2 vozes Chirp 3 HD em polonês e ≥2 em português (`GOOGLE_TTS_VOICES_PL/PT`).
-- [ ] **ElevenLabs (plano Free):** criar conta, gerar API key (`ELEVENLABS_API_KEY`),
+- [x] **ElevenLabs (plano Free):** criar conta, gerar API key (`ELEVENLABS_API_KEY`),
       escolher vozes na Voice Library (`ELEVENLABS_VOICES_PL/PT`) e o modelo Flash (`ELEVENLABS_MODEL`).
-- [ ] Voice lists no formato `id:Nome,id:Nome`.
+- [x] Voice lists no formato `id:Nome,id:Nome`.
 
 ## Depois do benchmark
 
