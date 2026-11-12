@@ -25,7 +25,7 @@ Tudo o que precisa ser feito à mão (contas, chaves, comandos). Marque conforme
 
 ## Antes da fatia 2 (voz) — contas gratuitas para o benchmark
 
-Os três provedores serão comparados com `backend/scripts/tts_bench.py`, só com planos gratuitos.
+Os dois provedores serão comparados com `backend/scripts/tts_bench.py`, só com planos gratuitos.
 O script mostra quantos caracteres vai gastar e pede confirmação antes de rodar.
 
 - [ ] **Google Cloud Text-to-Speech:** no mesmo projeto do Google Cloud do Gemini, ativar a
@@ -34,15 +34,13 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
       Escolher ≥2 vozes Chirp 3 HD em polonês e ≥2 em português (`GOOGLE_TTS_VOICES_PL/PT`).
 - [ ] **ElevenLabs (plano Free):** criar conta, gerar API key (`ELEVENLABS_API_KEY`),
       escolher vozes na Voice Library (`ELEVENLABS_VOICES_PL/PT`) e o modelo Flash (`ELEVENLABS_MODEL`).
-- [ ] **Cartesia (plano Free):** criar conta, gerar API key (`CARTESIA_API_KEY`),
-      escolher vozes polonesas e brasileiras (`CARTESIA_VOICES_PL/PT`) e o modelo Sonic (`CARTESIA_MODEL`).
 - [ ] Voice lists no formato `id:Nome,id:Nome`.
 
 ## Depois do benchmark
 
 - [ ] Ouvir a comparação às cegas (`bench_results/<data>/index.html`) e ver a latência no `report.md`.
 - [ ] Escolher `TTS_PROVIDER`, ajustar `TTS_MONTHLY_CHARS` à cota grátis ou ao plano e `PRICE_TTS_PER_1K_CHARS`.
-- [ ] Se for um plano pago (ElevenLabs/Cartesia), deixar **desligada** a cobrança por excedente, se o plano oferecer.
+- [ ] Se for um plano pago (ElevenLabs), deixar **desligada** a cobrança por excedente, se o plano oferecer.
 - [ ] Anotar resultado e escolha em `docs/DECISIONS.md`.
 
 ## Fatia 6 (deploy) — detalhado depois

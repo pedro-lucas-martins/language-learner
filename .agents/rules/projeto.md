@@ -15,7 +15,7 @@ These rules apply to every agent session in this workspace.
 - Never use `TODO`, `pass`, `...`, mock responses or placeholder logic to make something "look done". If something cannot be finished, say so in the report and leave it out.
 
 ## 3. Cost discipline
-- Paid services allowed: Gemini API (paid tier) and one TTS provider among Google Cloud TTS (Chirp 3 HD), ElevenLabs and Cartesia (SPEC §2, §6). Hosting, DB and CI stay on free tiers. Never add another paid service without the user's explicit approval.
+- Paid services allowed: Gemini API (paid tier) and one TTS provider among Google Cloud TTS (Chirp 3 HD) and ElevenLabs (SPEC §2, §6). Hosting, DB and CI stay on free tiers. Never add another paid service without the user's explicit approval.
 - Every call to Gemini or a TTS provider must record a row in `usage_events` (SPEC §3) — no untracked paid calls, including in scripts.
 - Every call to an external API must: have a timeout, handle 429/quota/5xx with one retry + backoff, then fall back (TTS) or emit a typed `error` event. Never crash the WebSocket.
 - Tests must NEVER call real paid APIs. Scripts that spend money or free-tier quota (`precompute_topic_audio.py`, `stt_eval.py`, `tts_bench.py`) must print the estimated cost and ask for confirmation before running.

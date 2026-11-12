@@ -44,6 +44,11 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Decision:** chat on `gemini-3.5-flash-lite` (stable price, single input rate incl. audio for slice 2); utility/fallback on `gemini-3.1-flash-lite`, a different model so the fallback still works when the chat model fails.
 - **Consequence:** lower reply quality than Flash; revisit if corrections or Polish fluency feel weak. `GEMINI_THINKING_LEVEL` left empty until we confirm these models accept it.
 
+## 009 — Cartesia dropped from the TTS benchmark (2026-11-12)
+- **Context:** the author decided not to evaluate Cartesia.
+- **Decision:** two TTS adapters only: `TTS_PROVIDER` = `google` | `elevenlabs`; the benchmark compares them blind as A/B. Amends 006.
+- **Consequence:** less adapter code and one fewer account; Cartesia can be re-added later behind the same `TtsProvider` interface.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |

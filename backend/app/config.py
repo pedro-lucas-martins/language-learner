@@ -13,7 +13,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # The .env file sits at the repository root (one level above backend/).
 _ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
 
-TtsProviderName = Literal["google", "elevenlabs", "cartesia"]
+TtsProviderName = Literal["google", "elevenlabs"]
 LangCode = Literal["pl-PL", "pt-BR"]
 
 
@@ -87,12 +87,6 @@ class Settings(BaseSettings):
     elevenlabs_voices_pl: str = ""
     elevenlabs_voices_pt: str = ""
 
-    # --- Cartesia ---
-    cartesia_api_key: str = ""
-    cartesia_model: str = ""
-    cartesia_voices_pl: str = ""
-    cartesia_voices_pt: str = ""
-
     # --- edge-tts fallback ---
     edge_voices_pl: str = "pl-PL-ZofiaNeural,pl-PL-MarekNeural"
     edge_voices_pt: str = "pt-BR-FranciscaNeural,pt-BR-AntonioNeural"
@@ -119,8 +113,6 @@ class Settings(BaseSettings):
         "google_tts_voices_pt",
         "elevenlabs_voices_pl",
         "elevenlabs_voices_pt",
-        "cartesia_voices_pl",
-        "cartesia_voices_pt",
     )
     @classmethod
     def _validate_voices(cls, value: str) -> str:
@@ -138,7 +130,6 @@ class Settings(BaseSettings):
         credentials = {
             "google": self.google_application_credentials,
             "elevenlabs": self.elevenlabs_api_key,
-            "cartesia": self.cartesia_api_key,
         }
         return bool(credentials[provider])
 
