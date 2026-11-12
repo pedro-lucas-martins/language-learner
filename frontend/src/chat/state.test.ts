@@ -88,6 +88,34 @@ describe("chatReducer", () => {
       },
     );
     expect(s.user?.level).toBe("B2");
-    expect(s.usage).toEqual({ monthUsdEst: 1.5, budgetUsd: 15 });
+    expect(s.usage).toEqual({ monthUsdEst: 1.5, budgetUsd: 15, ttsProvider: "google" });
+  });
+
+  it("stores the last turn's metrics", () => {
+    const s = apply(initialChatState, {
+      type: "metrics",
+      message_id: "a1",
+      stt_ms: 1600,
+      llm_first_token_ms: 2600,
+      first_audio_ms: 3500,
+      total_ms: 4600,
+    });
+    expect(s.metrics).toEqual({
+      sttMs: 1600,
+      llmFirstTokenMs: 2600,
+      firstAudioMs: 3500,
+      totalMs: 4600,
+    });
+  });
+
+  it("interrupted ends streaming and the wait for a reply", () => {
+    const s = apply(
+      initialChatState,
+      { type: "transcript", message_id: "u1", text: "Hej" },
+      { type: "ai_text_delta", message_id: "a1", delta: "Cze" },
+      { type: "interrupted", message_id: "a1" },
+    );
+    expect(s.awaitingReply).toBe(false);
+    expect(s.messages[1]).toMatchObject({ text: "Cze", streaming: false });
   });
 });

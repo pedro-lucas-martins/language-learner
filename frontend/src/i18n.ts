@@ -22,6 +22,21 @@ const ptBR = {
   thinking: "digitando…",
   emptyChat: "Diga oi para começar a conversa!",
   usageMonth: "Gasto estimado no mês",
+  mic: "Microfone",
+  micHint: "Toque: mãos livres · Segure: falar",
+  listening: "Ouvindo… pode falar",
+  recording: "Gravando…",
+  aiSpeaking: "Falando… toque no microfone para interromper",
+  micDenied: "Sem acesso ao microfone. Libere a permissão no navegador.",
+  micUnsupported: "Microfone indisponível: abra o app por HTTPS ou em localhost.",
+  replay: "Ouvir de novo",
+  replaySlow: "Ouvir devagar",
+  stopAudio: "Parar áudio",
+  metricsVoice: "1ª voz",
+  metricsStt: "transcrição",
+  metricsTotal: "total",
+  metricsLabel: "Última resposta (medido)",
+  fallbackVoice: "Voz reserva em uso (cota de voz do mês)",
 } as const;
 
 type Strings = { [K in keyof typeof ptBR]: string };
@@ -44,6 +59,21 @@ const plPL: Strings = {
   thinking: "pisze…",
   emptyChat: "Przywitaj się, aby zacząć rozmowę!",
   usageMonth: "Szacowany koszt w tym miesiącu",
+  mic: "Mikrofon",
+  micHint: "Dotknij: tryb bez rąk · Przytrzymaj: mów",
+  listening: "Słucham… możesz mówić",
+  recording: "Nagrywam…",
+  aiSpeaking: "Mówię… dotknij mikrofonu, aby przerwać",
+  micDenied: "Brak dostępu do mikrofonu. Zezwól na to w przeglądarce.",
+  micUnsupported: "Mikrofon niedostępny: otwórz aplikację przez HTTPS lub na localhost.",
+  replay: "Odtwórz ponownie",
+  replaySlow: "Odtwórz wolniej",
+  stopAudio: "Zatrzymaj dźwięk",
+  metricsVoice: "pierwszy głos",
+  metricsStt: "transkrypcja",
+  metricsTotal: "razem",
+  metricsLabel: "Ostatnia odpowiedź (zmierzone)",
+  fallbackVoice: "Używany jest głos zapasowy (miesięczny limit głosu)",
 };
 
 export type StringKey = keyof typeof ptBR;

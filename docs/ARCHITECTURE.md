@@ -2,7 +2,7 @@
 
 Describes what exists **now**. Target design lives in [`SPEC.md`](SPEC.md).
 
-_Last updated: slice 2b (voice turn on the backend; the browser does not record or play audio yet — slice 2c)._
+_Last updated: slice 2 (voice conversation: backend and browser)._
 
 ## Overview
 
@@ -94,9 +94,15 @@ The spend estimate multiplies summed usage by the `PRICE_*` settings.
 | `src/i18n.ts` | UI strings in pt-BR and pl-PL (same keys enforced by a test) |
 | `src/storage.ts` | Token in `localStorage`, every access wrapped in try/catch |
 | `src/chat/state.ts` | Pure reducer for connection, messages, streaming, errors, usage |
-| `src/chat/useChatSocket.ts` | Owns the WebSocket, auth, commands, reconnect |
+| `src/chat/useChatSocket.ts` | Owns the WebSocket, auth, commands, reconnect; binary frames → voice layer |
+| `src/chat/useVoice.ts` | Mic (hands-free VAD / push-to-talk), barge-in, playback, replay |
+| `src/audio/recorder.ts` | MediaRecorder (webm/opus → mp4 → aac), one blob per utterance |
+| `src/audio/vad.ts` | Volume VAD: pure detector (calibration, silence, discard) + mic monitor |
+| `src/audio/assembler.ts` | Joins `audio_meta` + binary frames into complete sentences |
+| `src/audio/player.ts` | Sentence queue on one `<audio>`, autoplay unlock, replay 1×/0.8×, speechSynthesis fallback |
+| `src/components/MicButton.tsx` | Tap = hands-free on/off, hold = push-to-talk |
 | `src/components/LoginScreen.tsx` | Token login (language guessed from the browser) |
-| `src/components/ChatScreen.tsx` | Text chat, level selector, errors, spend line |
+| `src/components/ChatScreen.tsx` | Chat, mic, replay buttons, voice status, metrics and spend lines |
 
 ## Tests
 
@@ -105,16 +111,21 @@ The spend estimate multiplies summed usage by the `PRICE_*` settings.
   and end-to-end WebSocket tests (origin, auth, streaming, persistence, summary, level,
   errors, daily cap, provider down, missing configuration).
 - CI also applies the migrations to a real Postgres and runs `alembic check`.
-- Frontend (vitest): reducer, frame parser, i18n key parity, language detection.
+- Frontend (vitest): reducer (incl. metrics, interrupted), frame parser, i18n key parity,
+  language detection, sentence assembler, VAD decisions, recorder MIME choice.
+- `npm run dev:lan`: HTTPS + proxy for testing on a phone (see `docs/USER_ACTIONS.md`).
 
 ## Known limitations
 
 - **STT normalization:** LLM-based STT may "fix" the learner's grammar (seen: "minha amigo" →
   "meu amigo"). The prompt asks for verbatim output; the editable transcript arrives in slice 3.
+- **Volume VAD** can be fooled by loud background noise; push-to-talk always works.
+- **iOS:** Google's audio is Ogg/Opus; older iOS versions may not decode it (the sentence is
+  skipped). Check on the real phone.
 - **Latency** is measured per turn (`metrics`), not promised. Warm local numbers are in
   `docs/DECISIONS.md` (012).
 
 ## Not built yet
 
-Recording and playing audio in the browser (slice 2c), feedback track, pronunciation, topics, flashcards, user_facts updates,
+Feedback track, pronunciation, topics, flashcards, user_facts updates,
 responsive layouts, deploy. See SPEC §11.

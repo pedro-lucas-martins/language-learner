@@ -19,6 +19,15 @@ export type CloseReason = "unauthorized" | "origin" | "network";
 export interface Usage {
   monthUsdEst: number;
   budgetUsd: number;
+  ttsProvider: string;
+}
+
+/** Last turn's timings in ms (SPEC §6), shown as measured values, never as targets. */
+export interface Metrics {
+  sttMs: number | null;
+  llmFirstTokenMs: number | null;
+  firstAudioMs: number | null;
+  totalMs: number;
 }
 
 export interface ChatState {
@@ -30,6 +39,7 @@ export interface ChatState {
   awaitingReply: boolean;
   error: string | null;
   usage: Usage | null;
+  metrics: Metrics | null;
 }
 
 export type ChatAction =
@@ -47,6 +57,7 @@ export const initialChatState: ChatState = {
   awaitingReply: false,
   error: null,
   usage: null,
+  metrics: null,
 };
 
 function finishStreaming(messages: ChatMessage[]): ChatMessage[] {
@@ -135,16 +146,30 @@ function applyServerMsg(state: ChatState, msg: ServerMsg): ChatState {
     case "usage":
       return {
         ...state,
-        usage: { monthUsdEst: msg.month_usd_est, budgetUsd: msg.budget_usd },
+        usage: {
+          monthUsdEst: msg.month_usd_est,
+          budgetUsd: msg.budget_usd,
+          ttsProvider: msg.tts_provider_active,
+        },
       };
 
     case "interrupted":
       return { ...state, awaitingReply: false, messages: finishStreaming(state.messages) };
 
-    // Audio frames and timings are handled by the audio layer, not this reducer.
+    case "metrics":
+      return {
+        ...state,
+        metrics: {
+          sttMs: msg.stt_ms,
+          llmFirstTokenMs: msg.llm_first_token_ms,
+          firstAudioMs: msg.first_audio_ms,
+          totalMs: msg.total_ms,
+        },
+      };
+
+    // Audio frames are handled by the voice layer (player), not this reducer.
     case "audio_meta":
     case "tts_fallback":
-    case "metrics":
       return state;
 
     case "error":

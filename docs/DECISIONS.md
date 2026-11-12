@@ -72,6 +72,13 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **`DEV_EXTRA_ORIGINS`:** exact extra origins accepted only in development, for the HTTPS LAN address used to test on a phone (slice 2c).
 - **Utterance size:** one binary message of at most 2 MB.
 
+## 013 — Slice 2c: voice in the browser (2026-11-12)
+- **Playback:** one reused `<audio>` element, unlocked with a silent WAV on the first tap/key (iOS/Android autoplay). Sentences are played in arrival order, which is sentence order because the server synthesizes them sequentially. Received audio is kept per message (last 40) for ▶ and 0.8× replay (`playbackRate`); `tts_fallback` sentences use `speechSynthesis`. An undecodable sentence is skipped.
+- **VAD by volume** (user's choice): RMS every 40 ms; threshold = max(0.015, 3 × noise floor). The first 500 ms calibrate the noise floor; while recording it adapts very slowly, so a hum that starts mid-utterance ends it after ~15 s instead of 30. Recording starts on the first loud block (keeps the first syllable); < 250 ms of loud audio is discarded; 900 ms of silence ends the utterance. Paused while the AI speaks and for 400 ms after.
+- **Mic button:** a press shorter than 300 ms toggles hands-free mode, a longer press is push-to-talk. Any press interrupts the AI (barge-in): the client stops playback at once and drops late frames of that reply.
+- **Phone testing:** `npm run dev:lan` serves HTTPS with a self-signed certificate (`@vitejs/plugin-basic-ssl`) and proxies `/ws`, `/me`, `/health` to the backend, so the page and the API share one origin. The LAN origin must be in `DEV_EXTRA_ORIGINS`.
+- **Observed in the browser (desktop Chrome engine, local):** typed turn, warm: first voice 2.6 s, total 4.6 s; first turn after a restart 7.9 s.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |

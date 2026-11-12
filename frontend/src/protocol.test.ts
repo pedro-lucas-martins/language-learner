@@ -12,6 +12,12 @@ describe("parseServerMsg", () => {
     });
   });
 
+  it("accepts the voice messages", () => {
+    for (const type of ["audio_meta", "tts_fallback", "interrupted", "metrics"]) {
+      expect(parseServerMsg(JSON.stringify({ type, message_id: "a1" }))?.type).toBe(type);
+    }
+  });
+
   it("rejects unknown or malformed frames", () => {
     expect(parseServerMsg('{"type":"nope"}')).toBeNull();
     expect(parseServerMsg("not json")).toBeNull();

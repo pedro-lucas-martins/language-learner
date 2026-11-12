@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
-import { useChatSocket } from "../chat/useChatSocket.ts";
+import type { Metrics } from "../chat/state.ts";
+import { useChatSocket, type AudioHandler } from "../chat/useChatSocket.ts";
+import { useVoice } from "../chat/useVoice.ts";
 import { t } from "../i18n.ts";
 import { LEVELS, MAX_USER_TEXT, type Lang, type Level } from "../protocol.ts";
+import { MicButton } from "./MicButton.tsx";
 
 interface Props {
   token: string;
@@ -11,9 +14,30 @@ interface Props {
   onLogout: () => void;
 }
 
-/** Slice 1: text-only conversation. Voice, feedback panel and layouts come later. */
+function seconds(ms: number | null): string {
+  return ms === null ? "–" : `${(ms / 1000).toFixed(1)} s`;
+}
+
+function metricsText(lang: Lang, m: Metrics): string {
+  const parts = [`${t(lang, "metricsVoice")} ${seconds(m.firstAudioMs)}`];
+  if (m.sttMs !== null) parts.push(`${t(lang, "metricsStt")} ${seconds(m.sttMs)}`);
+  parts.push(`${t(lang, "metricsTotal")} ${seconds(m.totalMs)}`);
+  return `${t(lang, "metricsLabel")}: ${parts.join(" · ")}`;
+}
+
+/** Slice 2: text and voice conversation. Feedback panel and responsive layouts come later. */
 export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Props) {
-  const { state, sendText, setLevel, reconnect, dismissError } = useChatSocket(token);
+  const audioRef = useRef<AudioHandler | null>(null);
+  const { state, sendText, sendUtterance, interrupt, setLevel, reconnect, dismissError } =
+    useChatSocket(token, audioRef);
+  const lastAi = [...state.messages].reverse().find((m) => m.role === "ai");
+  const voice = useVoice({
+    audioRef,
+    busy: state.awaitingReply,
+    lastAiMessageId: lastAi?.id ?? null,
+    sendUtterance,
+    interrupt,
+  });
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
   const lang: Lang = state.user?.native_lang ?? fallbackLang;
@@ -46,8 +70,30 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
   const lastMessage = state.messages[state.messages.length - 1];
   const showTyping = state.awaitingReply && lastMessage?.role !== "ai";
 
+  const voiceStatus = voice.recording
+    ? t(lang, "recording")
+    : voice.speaking
+      ? t(lang, "aiSpeaking")
+      : voice.handsFree
+        ? t(lang, "listening")
+        : null;
+  const micProblem =
+    voice.micError === "denied"
+      ? t(lang, "micDenied")
+      : voice.micError === "unsupported"
+        ? t(lang, "micUnsupported")
+        : null;
+  const onFallbackVoice =
+    state.usage !== null &&
+    state.usage.ttsProvider !== "google" &&
+    state.usage.ttsProvider !== "elevenlabs";
+
   return (
-    <div className="mx-auto flex h-[100dvh] max-w-2xl flex-col">
+    <div
+      className="mx-auto flex h-[100dvh] max-w-2xl flex-col"
+      onPointerDownCapture={voice.unlock}
+      onKeyDownCapture={voice.unlock}
+    >
       <header className="flex items-center gap-2 border-b border-slate-200 px-4 py-2 dark:border-slate-800">
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-semibold">{t(lang, "appTitle")}</h1>
@@ -114,6 +160,28 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
             >
               {message.text}
               {message.streaming && <span className="ml-0.5 animate-pulse">▍</span>}
+              {message.role === "ai" && !message.streaming && voice.hasAudio(message.id) && (
+                <span className="mt-1 flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => voice.replay(message.id)}
+                    aria-label={t(lang, "replay")}
+                    title={t(lang, "replay")}
+                    className="min-h-12 min-w-12 rounded-lg text-lg text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    ▶
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => voice.replay(message.id, 0.8)}
+                    aria-label={t(lang, "replaySlow")}
+                    title={t(lang, "replaySlow")}
+                    className="min-h-12 min-w-12 rounded-lg text-sm font-medium text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    0.8×
+                  </button>
+                </span>
+              )}
             </p>
           </div>
         ))}
@@ -121,6 +189,21 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
           <p className="text-sm italic text-slate-500 dark:text-slate-400">{t(lang, "thinking")}</p>
         )}
       </div>
+
+      {(voiceStatus || micProblem) && (
+        <div className="flex items-center justify-center gap-3 px-4 pb-1 text-sm text-slate-600 dark:text-slate-300">
+          <span role="status">{micProblem ?? voiceStatus}</span>
+          {voice.speaking && (
+            <button
+              type="button"
+              onClick={voice.stopSpeaking}
+              className="min-h-10 rounded-lg px-2 font-medium underline"
+            >
+              {t(lang, "stopAudio")}
+            </button>
+          )}
+        </div>
+      )}
 
       {state.error && (
         <div
@@ -138,6 +221,14 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
         onSubmit={submit}
         className="flex items-end gap-2 border-t border-slate-200 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] dark:border-slate-800"
       >
+        <MicButton
+          lang={lang}
+          recording={voice.recording}
+          handsFree={voice.handsFree}
+          disabled={state.status !== "ready" || voice.micError === "unsupported"}
+          onPress={() => void voice.press()}
+          onRelease={() => void voice.release()}
+        />
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -157,11 +248,17 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
         </button>
       </form>
 
-      {state.usage && (
-        <p className="pb-2 text-center text-[11px] text-slate-400">
-          {t(lang, "usageMonth")}: US$ {state.usage.monthUsdEst.toFixed(2)} /{" "}
-          {state.usage.budgetUsd.toFixed(0)}
-        </p>
+      {(state.usage || state.metrics) && (
+        <div className="pb-2 text-center text-[11px] text-slate-400">
+          {state.metrics && <p>{metricsText(lang, state.metrics)}</p>}
+          {state.usage && (
+            <p>
+              {t(lang, "usageMonth")}: US$ {state.usage.monthUsdEst.toFixed(2)} /{" "}
+              {state.usage.budgetUsd.toFixed(0)}
+              {onFallbackVoice && ` · ${t(lang, "fallbackVoice")}`}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );

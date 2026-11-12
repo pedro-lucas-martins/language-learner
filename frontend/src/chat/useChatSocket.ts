@@ -1,14 +1,31 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState, type RefObject } from "react";
 
 import { WS_URL } from "../config.ts";
-import { MAX_USER_TEXT, parseServerMsg, type ClientMsg, type Level } from "../protocol.ts";
+import {
+  MAX_MIME,
+  MAX_USER_TEXT,
+  parseServerMsg,
+  type ClientMsg,
+  type Level,
+  type ServerMsg,
+} from "../protocol.ts";
 import { chatReducer, initialChatState } from "./state.ts";
+
+/** Audio-related frames, handed to the voice layer (player) as they arrive. */
+export type AudioEvent =
+  | { kind: "meta"; meta: Extract<ServerMsg, { type: "audio_meta" }> }
+  | { kind: "binary"; data: ArrayBuffer }
+  | { kind: "fallback"; msg: Extract<ServerMsg, { type: "tts_fallback" }> }
+  | { kind: "interrupted"; messageId: string }
+  | { kind: "reset" };
+
+export type AudioHandler = (event: AudioEvent) => void;
 
 /**
  * Owns one WebSocket for the given token: authenticates, feeds server messages
- * into the reducer and exposes the client commands.
+ * into the reducer, hands audio frames to `audioRef` and exposes the client commands.
  */
-export function useChatSocket(token: string) {
+export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler | null>) {
   const [state, dispatch] = useReducer(chatReducer, initialChatState);
   const [attempt, setAttempt] = useState(0);
   const socketRef = useRef<WebSocket | null>(null);
@@ -17,7 +34,9 @@ export function useChatSocket(token: string) {
     let active = true; // ignore events from a socket this effect already discarded
     dispatch({ type: "connecting" });
     const socket = new WebSocket(`${WS_URL}/ws`);
+    socket.binaryType = "arraybuffer";
     socketRef.current = socket;
+    audioRef?.current?.({ kind: "reset" });
 
     socket.onopen = () => {
       if (!active) return;
@@ -25,9 +44,19 @@ export function useChatSocket(token: string) {
       socket.send(JSON.stringify(auth));
     };
     socket.onmessage = (event: MessageEvent) => {
-      if (!active || typeof event.data !== "string") return;
+      if (!active) return;
+      const audio = audioRef?.current;
+      if (event.data instanceof ArrayBuffer) {
+        audio?.({ kind: "binary", data: event.data });
+        return;
+      }
+      if (typeof event.data !== "string") return;
       const msg = parseServerMsg(event.data);
-      if (msg) dispatch({ type: "server", msg });
+      if (!msg) return;
+      if (msg.type === "audio_meta") audio?.({ kind: "meta", meta: msg });
+      else if (msg.type === "tts_fallback") audio?.({ kind: "fallback", msg });
+      else if (msg.type === "interrupted") audio?.({ kind: "interrupted", messageId: msg.message_id });
+      dispatch({ type: "server", msg });
     };
     socket.onclose = (event: CloseEvent) => {
       if (!active) return;
@@ -39,7 +68,7 @@ export function useChatSocket(token: string) {
       socketRef.current = null;
       socket.close(1000);
     };
-  }, [token, attempt]);
+  }, [token, attempt, audioRef]);
 
   const send = useCallback((msg: ClientMsg): boolean => {
     const socket = socketRef.current;
@@ -59,9 +88,27 @@ export function useChatSocket(token: string) {
     [send],
   );
 
+  /** One utterance = start_of_speech, one binary frame, end_of_speech (SPEC §6). */
+  const sendUtterance = useCallback(
+    async (blob: Blob): Promise<boolean> => {
+      const socket = socketRef.current;
+      if (!socket || socket.readyState !== WebSocket.OPEN || blob.size === 0) return false;
+      const data = await blob.arrayBuffer();
+      const mime = (blob.type || "audio/webm").slice(0, MAX_MIME);
+      if (!send({ type: "start_of_speech", mime, purpose: "utterance" })) return false;
+      socket.send(data);
+      send({ type: "end_of_speech" });
+      dispatch({ type: "sent" });
+      return true;
+    },
+    [send],
+  );
+
+  const interrupt = useCallback(() => send({ type: "user_started_speaking" }), [send]);
+
   const setLevel = useCallback((level: Level) => send({ type: "set_level", level }), [send]);
   const reconnect = useCallback(() => setAttempt((n) => n + 1), []);
   const dismissError = useCallback(() => dispatch({ type: "dismiss_error" }), []);
 
-  return { state, sendText, setLevel, reconnect, dismissError };
+  return { state, sendText, sendUtterance, interrupt, setLevel, reconnect, dismissError };
 }

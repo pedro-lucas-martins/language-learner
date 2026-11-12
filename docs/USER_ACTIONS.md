@@ -63,6 +63,28 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
       ```
       Compare "expected" com "got": o ideal é a transcrição manter os seus erros.
 
+## Fatia 2c — testar a voz
+
+**No computador (Chrome):** com `docker compose up`, abra http://localhost:5173.
+- [ ] **Segure** o botão do microfone, fale em polonês e solte: a transcrição aparece e a IA responde falando.
+- [ ] **Toque** no microfone (toque rápido): liga o modo mãos-livres (botão verde). Fale normalmente; depois
+      de ~1 s de silêncio a fala é enviada. Toque de novo para desligar.
+- [ ] Enquanto a IA fala, toque/segure o microfone: ela para na hora (interrupção).
+- [ ] Nas respostas, ▶ repete o áudio e 0.8× repete mais devagar (sem gastar nada).
+
+**No celular (mesma rede Wi-Fi):**
+- [ ] No `.env`, `DEV_EXTRA_ORIGINS` deve ter o endereço do computador na rede, ex.
+      `DEV_EXTRA_ORIGINS=https://192.168.1.8:5173` (descubra o IP com `hostname -I`). Depois:
+      `docker compose up -d backend`.
+- [ ] Troque o frontend do Docker pelo modo HTTPS:
+      ```bash
+      docker compose stop frontend
+      cd frontend && npm install && npm run dev:lan
+      ```
+- [ ] No celular, abra `https://192.168.1.8:5173`, aceite o aviso de certificado (é o certificado
+      local de desenvolvimento) e faça login com o token.
+- [ ] Para voltar ao normal: Ctrl+C no `dev:lan` e `docker compose start frontend`.
+
 ## Depois do benchmark
 
 - [x] Ouvir a comparação às cegas (`bench_results/<data>/index.html`) e ver a latência no `report.md`.
