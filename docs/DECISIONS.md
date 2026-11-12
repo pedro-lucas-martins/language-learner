@@ -39,6 +39,11 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Speed knob:** optional `GEMINI_THINKING_LEVEL` (empty = model default).
 - **Tests:** SQLite + `FakeLlm` for speed and isolation; CI additionally applies the migrations to Postgres 16 and runs `alembic check`.
 
+## 008 — Flash-Lite models for chat and utility (2026-11-12)
+- **Context:** `gemini-3.8-flash` costs US$ 0.75/3.75 per 1M and doubles on 2027-01-01; the monthly budget is US$ 15.
+- **Decision:** chat on `gemini-3.5-flash-lite` (stable price, single input rate incl. audio for slice 2); utility/fallback on `gemini-3.1-flash-lite`, a different model so the fallback still works when the chat model fails.
+- **Consequence:** lower reply quality than Flash; revisit if corrections or Polish fluency feel weak. `GEMINI_THINKING_LEVEL` left empty until we confirm these models accept it.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |
@@ -49,8 +54,8 @@ Short records: context → decision → consequence. Newest at the bottom.
 
 | Setting | Value | Price checked | Date |
 |---|---|---|---|
-| `GEMINI_CHAT_MODEL` | | | |
-| `GEMINI_UTILITY_MODEL` | | | |
-| `GEMINI_STT_MODEL` | | | |
+| `GEMINI_CHAT_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (text/audio) / 2.50 out per 1M | 2026-11-12 |
+| `GEMINI_UTILITY_MODEL` | `gemini-3.1-flash-lite` | US$ 0.25 in (0.50 audio) / 1.50 out per 1M | 2026-11-12 |
+| `GEMINI_STT_MODEL` | (slice 2) | | |
 | `TTS_PROVIDER` (after benchmark) | | | |
 | TTS model / plan | | | |
