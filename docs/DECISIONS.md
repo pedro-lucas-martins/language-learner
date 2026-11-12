@@ -138,6 +138,12 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Decision:** `TTS_PROVIDER=elevenlabs`, Flash v2.5, premade voices Sarah/George (the Free plan cannot use native library voices through the API). `TTS_MONTHLY_CHARS=10000` (the Free allowance), so at 95% the app moves to edge-tts by itself and never needs a paid overage.
 - **Consequence:** on the Free plan only a few replies per month use ElevenLabs (≈8,800 of 10,000 characters were spent on 2026-11-12, mostly by the benchmark); after that edge-tts speaks until the allowance resets. Regular daily use needs a paid ElevenLabs plan — then raise `TTS_MONTHLY_CHARS` to the plan's characters, set `PRICE_TTS_PER_1K_CHARS`, and native voices become available. Google stays configured as an alternative (`TTS_PROVIDER=google`).
 
+## 021 — STT back to Flash-Lite for speed (2026-11-12)
+- **Context:** the author found the transcription too slow with `gemini-3.8-flash` (~2.4 s warm).
+- **Measured** (same 6 accented clips, warm, with the matching question as context): 3.8-flash LOW 9% WER / 2.4 s; 3.6-flash LOW 13% / 2.5 s; **3.5-flash-lite LOW 19% / 1.4 s**; 3.1-flash-lite 18% / 1.5 s. The dedicated `gemini-3.5-transcribe` (v1beta, `audio_transcription` parts, VERBATIM mode, `language_codes`) did badly on accented learner speech (77% WER, once Chinese output), was not faster (1.8 s) and is limited to 10 requests/min on Tier 1 — rejected.
+- **Decision (author's choice: speed):** `GEMINI_STT_MODEL=gemini-3.5-flash-lite`, `GEMINI_STT_THINKING_LEVEL=LOW` (LOW also helps this model: 36% → 19% with context).
+- **Consequence:** ~1 s faster per voice turn and 2.5× cheaper STT. Flash-Lite depends much more on the context: in a check where the clips did not answer the AI's last message, transcripts were poor ("Mas na i mi, Pedro."), while 3.8-flash stays ~14% without context. The editable transcript covers mistakes; revisit (3.6-flash is the middle ground) if wrong transcripts become frequent.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |
@@ -153,7 +159,7 @@ Short records: context → decision → consequence. Newest at the bottom.
 |---|---|---|---|
 | `GEMINI_CHAT_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (text/audio) / 2.50 out per 1M | 2026-11-12 |
 | `GEMINI_UTILITY_MODEL` | `gemini-3.1-flash-lite` | US$ 0.25 in (0.50 audio) / 1.50 out per 1M | 2026-11-12 |
-| `GEMINI_STT_MODEL` | `gemini-3.8-flash` (thinking LOW), was `gemini-3.5-flash-lite` | US$ 0.75 in / 3.75 out per 1M until 2026-12-31, then 1.50 / 7.50 | 2026-11-12 |
+| `GEMINI_STT_MODEL` | `gemini-3.5-flash-lite` (thinking LOW), see 021 | US$ 0.30 in / 2.50 out per 1M | 2026-11-12 |
 | `GEMINI_FEEDBACK_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (text/audio) / 2.50 out per 1M | 2026-11-12 |
 | `TTS_PROVIDER` (after benchmark) | `elevenlabs` (was `google`, see 020) | Free plan, 10,000 chars/month | 2026-11-12 |
 | TTS model / plan | Chirp 3 HD, voices Kore (F) and Charon (M), OGG_OPUS | free tier (`TTS_MONTHLY_CHARS=1000000`, `PRICE_TTS_PER_1K_CHARS=0`) | 2026-11-12 |
