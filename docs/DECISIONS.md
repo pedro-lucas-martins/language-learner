@@ -57,11 +57,19 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Input streaming** (feeding LLM tokens into a provider WebSocket) is left for later, per SPEC §6: one request per sentence in v1.
 - **Consequence:** the 3 s first-byte timeout can trip on a cold connection right after startup (the first sentence then uses edge-tts).
 
+## 011 — Google Chirp 3 HD chosen as the TTS provider (2026-11-12)
+- **Context:** local benchmark (run 1 below): ElevenLabs Flash v2.5 is ~3× faster (TTFA p50 ~280 ms vs ~400 ms; p90 ~0.3 s vs ~1.3 s; full sentence ~0.37 s vs ~1.2 s). But its Free plan (~10k credits/month) was almost used up by the benchmark alone and does not allow native library voices through the API; daily use would need a paid plan. In the blind listening test the author preferred Google (Kore).
+- **Decision:** `TTS_PROVIDER=google` on the free tier. ElevenLabs stays as a selectable adapter.
+- **Consequence:** zero TTS cost within 1M characters/month; with sentence-by-sentence playback the first sentence starts ~1 s after its text is ready (more at p90). Re-run the benchmark from the deployed region in slice 6.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |
 |---|---|---|---|---|---|---|
-| | | | | | | |
+| 1 (2026-11-12, runs=2) | Local (Brazil) | google (Kore) | pl-PL | 411 ms | 1326 ms | 60 items, 0 errors; total p50 1207 ms |
+| 1 | Local (Brazil) | google (Kore) | pt-BR | 391 ms | 1212 ms | total p50 1159 ms |
+| 1 | Local (Brazil) | elevenlabs (Sarah, Flash v2.5) | pl-PL | 281 ms | 325 ms | total p50 381 ms |
+| 1 | Local (Brazil) | elevenlabs (Sarah, Flash v2.5) | pt-BR | 278 ms | 294 ms | total p50 369 ms |
 
 ## Provider choices (fill in when keys are created)
 
@@ -70,5 +78,5 @@ Short records: context → decision → consequence. Newest at the bottom.
 | `GEMINI_CHAT_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (text/audio) / 2.50 out per 1M | 2026-11-12 |
 | `GEMINI_UTILITY_MODEL` | `gemini-3.1-flash-lite` | US$ 0.25 in (0.50 audio) / 1.50 out per 1M | 2026-11-12 |
 | `GEMINI_STT_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (audio) per 1M | 2026-11-12 |
-| `TTS_PROVIDER` (after benchmark) | | | |
-| TTS model / plan | | | |
+| `TTS_PROVIDER` (after benchmark) | `google` | free tier 1M chars/month | 2026-11-12 |
+| TTS model / plan | Chirp 3 HD, voices Kore (F) and Charon (M), OGG_OPUS | free tier (`TTS_MONTHLY_CHARS=1000000`, `PRICE_TTS_PER_1K_CHARS=0`) | 2026-11-12 |

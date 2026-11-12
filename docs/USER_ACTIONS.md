@@ -38,7 +38,7 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
 
 ## Fatia 2a — rodar o benchmark de voz
 
-- [ ] Com o Docker rodando (o banco precisa estar no ar), na pasta `backend/`:
+- [x] Com o Docker rodando (o banco precisa estar no ar), na pasta `backend/`:
       ```bash
       .venv/bin/python -m scripts.tts_bench --runs 2
       ```
@@ -50,10 +50,10 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
 
 ## Depois do benchmark
 
-- [ ] Ouvir a comparação às cegas (`bench_results/<data>/index.html`) e ver a latência no `report.md`.
-- [ ] Escolher `TTS_PROVIDER`, ajustar `TTS_MONTHLY_CHARS` à cota grátis ou ao plano e `PRICE_TTS_PER_1K_CHARS`.
+- [x] Ouvir a comparação às cegas (`bench_results/<data>/index.html`) e ver a latência no `report.md`.
+- [x] Escolher `TTS_PROVIDER` (escolhido: `google`, plano gratuito), ajustar `TTS_MONTHLY_CHARS` à cota grátis ou ao plano e `PRICE_TTS_PER_1K_CHARS`.
 - [ ] Se for um plano pago (ElevenLabs), deixar **desligada** a cobrança por excedente, se o plano oferecer.
-- [ ] Anotar resultado e escolha em `docs/DECISIONS.md`.
+- [x] Anotar resultado e escolha em `docs/DECISIONS.md`.
 
 ## Fatia 6 (deploy) — detalhado depois
 
