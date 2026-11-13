@@ -152,7 +152,9 @@ The spend estimate multiplies summed usage by the `PRICE_*` settings.
 | `src/api.ts` | REST client: due flashcards, review (grade names → SM-2), delete |
 | `src/chat/ownRecordings.ts` | Links each sent recording to its transcript (▶ "hear my recording") |
 | `src/chat/corrections.ts` | Pure helpers: corrections list (newest first), «marked» card fronts |
-| `src/components/SideNav.tsx` | Side menu: Conversation / Flashcards with due-cards badge (column ≥ 1024 px, drawer below) |
+| `src/components/SideNav.tsx` | Side menu: Conversation / Flashcards (due-cards badge) / About you (column ≥ 1024 px, drawer below) |
+| `src/components/ThemeBar.tsx` | Steering-theme chip and inline editor above the input |
+| `src/components/ProfilePage.tsx` | "About you": edit the remembered facts (100-word counter) |
 | `src/components/FeedbackPanel.tsx` | Corrections of this conversation (side column ≥ 1024 px, sheet below) |
 | `src/components/CorrectionItem.tsx` | One message's grammar and pronunciation feedback |
 | `src/components/WordPractice.tsx` | ▶ 1× / 0.8× and 🎙 hold-to-retry for one word, with the verdict |

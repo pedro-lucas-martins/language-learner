@@ -185,5 +185,11 @@ describe("chatReducer", () => {
     s = apply(s, { type: "error", code: "provider_unavailable", message: "x" });
     expect(s.phase).toBe("idle");
   });
+
+  it("adds a suggested topic as an AI message", () => {
+    const s = apply(initialChatState, { type: "topic", message_id: "t1", text: "Você gosta de praia?" });
+    expect(s.messages).toEqual([{ id: "t1", role: "ai", text: "Você gosta de praia?", streaming: false }]);
+    expect(s.awaitingReply).toBe(false);
+  });
 });
 

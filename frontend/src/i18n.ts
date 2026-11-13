@@ -84,6 +84,19 @@ const ptBR = {
   openMenu: "Abrir menu",
   navChat: "Conversa",
   navFlashcards: "Flashcards",
+  navProfile: "Sobre você",
+  suggestTopic: "Puxar assunto",
+  theme_: "Tema",
+  themeAdd: "+ Tema da conversa",
+  themeChange: "Trocar tema",
+  themePlaceholder: "ex.: viagens, trabalho, futebol",
+  clear: "Limpar",
+  save_: "Salvar",
+  saved: "Salvo",
+  words: "palavras",
+  factsTitle: "O que a IA lembra sobre você",
+  factsHelp: "A IA atualiza isto sozinha no fim de cada conversa, para lembrar de você na próxima. Você pode corrigir ou apagar o que quiser.",
+  factsEmpty: "Ainda não há nada. Converse um pouco e volte aqui.",
 } as const;
 
 type Strings = { [K in keyof typeof ptBR]: string };
@@ -168,6 +181,19 @@ const plPL: Strings = {
   openMenu: "Otwórz menu",
   navChat: "Rozmowa",
   navFlashcards: "Fiszki",
+  navProfile: "O tobie",
+  suggestTopic: "Podsuń temat",
+  theme_: "Temat",
+  themeAdd: "+ Temat rozmowy",
+  themeChange: "Zmień temat",
+  themePlaceholder: "np. podróże, praca, piłka nożna",
+  clear: "Wyczyść",
+  save_: "Zapisz",
+  saved: "Zapisano",
+  words: "słów",
+  factsTitle: "Co AI o tobie pamięta",
+  factsHelp: "AI uzupełnia to sama na koniec każdej rozmowy, żeby pamiętać cię następnym razem. Możesz poprawić lub usunąć, co chcesz.",
+  factsEmpty: "Na razie nic tu nie ma. Porozmawiaj chwilę i wróć tutaj.",
 };
 
 export type StringKey = keyof typeof ptBR;

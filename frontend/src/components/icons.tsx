@@ -86,3 +86,14 @@ export const CardsIcon = (p: IconProps) => (
     <path d="M4 8v10a2 2 0 0 0 2 2h9" />
   </Icon>
 );
+export const BulbIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z" />
+  </Icon>
+);
+export const UserIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21a8 8 0 0 1 16 0" />
+  </Icon>
+);

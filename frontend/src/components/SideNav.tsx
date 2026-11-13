@@ -2,9 +2,9 @@ import { useEffect } from "react";
 
 import { t, type StringKey } from "../i18n.ts";
 import type { Lang } from "../protocol.ts";
-import { CardsIcon, ChatIcon, CloseIcon } from "./icons.tsx";
+import { CardsIcon, ChatIcon, CloseIcon, UserIcon } from "./icons.tsx";
 
-export type View = "chat" | "flashcards";
+export type View = "chat" | "flashcards" | "profile";
 
 interface Props {
   lang: Lang;
@@ -20,6 +20,7 @@ interface Props {
 const ITEMS: { view: View; label: StringKey; Icon: typeof ChatIcon }[] = [
   { view: "chat", label: "navChat", Icon: ChatIcon },
   { view: "flashcards", label: "navFlashcards", Icon: CardsIcon },
+  { view: "profile", label: "navProfile", Icon: UserIcon },
 ];
 
 /** Side menu: Conversation and Flashcards (column on desktop, drawer on phones). */

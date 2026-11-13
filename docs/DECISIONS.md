@@ -187,6 +187,12 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **User facts:** written in the learner's `ui_lang` (SPEC §4.3 changed from `native_lang`), ≤100 words (truncated), updated by the utility model when a session with at least one turn closes; a failure keeps the old facts. `set_facts` saves an edit; `UserInfo` carries `user_facts`. Real check: "Pracuje jako programator; mieszka w Gdańsku; ma córkę; hobby: żeglarstwo."
 - **Consequence:** the session close now makes one extra small utility call (a fraction of a cent). Topic audio must be precomputed again if the default voices or the active provider change (the cache key includes them).
 
+## 027 — Slice 4 (frontend): 💡, steering theme, "About you" page (2026-11-13)
+- **💡 "Podsuń temat / Puxar assunto"** sits in the input bar, only for learners of Portuguese; the topic arrives as an AI message with its audio (▶ / 0.8×).
+- **Theme** is a small chip above the input ("+ Theme" → inline field, × clears). It lives in the browser and is sent again after a reconnect, because each connection is a new server session.
+- **"About you"** is a third page in the side menu: the remembered facts in an editor with a 100-word counter; saving sends `set_facts`, the confirmation comes back as `user_updated`.
+- **Real check (2026-11-13):** after the topic "Como mudou a sua cidade nos últimos dez anos?" and the theme "viagens pelo Brasil", the reply followed the answer, steered to travel and used the remembered fact about the learner's daughter.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |

@@ -12,6 +12,7 @@ import { listDueCards } from "../api.ts";
 import { FeedbackPanel } from "./FeedbackPanel.tsx";
 import { FlashcardReview } from "./FlashcardReview.tsx";
 import {
+  BulbIcon,
   CheckIcon,
   CloseIcon,
   MenuIcon,
@@ -21,7 +22,9 @@ import {
   SendIcon,
   StopIcon,
 } from "./icons.tsx";
+import { ProfilePage } from "./ProfilePage.tsx";
 import { SideNav, type View } from "./SideNav.tsx";
+import { ThemeBar } from "./ThemeBar.tsx";
 import { MicButton } from "./MicButton.tsx";
 import type { Practice } from "./practice.ts";
 import { SettingsMenu } from "./SettingsMenu.tsx";
@@ -77,6 +80,9 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
     setRecast,
     setCorrection,
     speakWord,
+    suggestTopic,
+    setTheme,
+    setFacts,
     setUiLang,
     correctionsSeen,
     setLevel,
@@ -98,6 +104,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
   const [menuOpen, setMenuOpen] = useState(false);
   const [view, setView] = useState<View>("chat");
   const [dueCount, setDueCount] = useState<number | null>(null);
+  const [topicTheme, setTopicTheme] = useState("");
   const isWide = useIsWide();
 
   // Cards due now, for the menu badge: on start, when switching pages and when a new
@@ -165,6 +172,19 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
   }, [state.messages, state.phase]);
 
   const canSend = ready && !state.awaitingReply && draft.trim().length > 0;
+  // Topics exist only for learners of Portuguese (SPEC §8).
+  const topicsAvailable = state.user?.target_lang === "pt-BR";
+
+  function changeTheme(next: string) {
+    setTopicTheme(next);
+    setTheme(next);
+  }
+
+  // A reconnect starts a new server session: send the chosen theme again.
+  useEffect(() => {
+    if (ready && topicTheme) setTheme(topicTheme);
+    // Deliberately only on (re)connect, not on every theme edit (changeTheme sends those).
+  }, [ready]);
   const lastMessage = state.messages[state.messages.length - 1];
 
   function submit(event?: FormEvent) {
@@ -228,7 +248,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
           </button>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-[15px] font-semibold tracking-tight">
-              {t(lang, view === "chat" ? "navChat" : "navFlashcards")}
+              {t(lang, view === "chat" ? "navChat" : view === "flashcards" ? "navFlashcards" : "navProfile")}
             </h1>
             {state.user && (
               <p className="muted truncate text-xs">
@@ -274,6 +294,14 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
               {t(lang, "reconnect")}
             </button>
           </div>
+        )}
+
+        {view === "profile" && (
+          <section className="flex-1 overflow-y-auto px-4 py-6 sm:px-6" aria-label={t(lang, "navProfile")}>
+            <div className="mx-auto max-w-xl">
+              <ProfilePage lang={lang} user={state.user} disabled={!ready} onSave={setFacts} />
+            </div>
+          </section>
         )}
 
         {view === "flashcards" && (
@@ -410,6 +438,9 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
             </div>
           )}
 
+          <div className="px-3 sm:px-5">
+            <ThemeBar lang={lang} theme={topicTheme} disabled={!ready} onChange={changeTheme} />
+          </div>
           <form onSubmit={submit} className="px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5">
             <div className="surface flex items-end gap-1 rounded-[28px] border border-zinc-200/80 p-1.5 shadow-sm transition-shadow focus-within:border-accent-500 focus-within:ring-4 focus-within:ring-accent-100 dark:border-zinc-800 dark:focus-within:ring-accent-700/30">
               <MicButton
@@ -420,6 +451,21 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
                 onPress={() => void voice.press()}
                 onRelease={() => void voice.release()}
               />
+              {topicsAvailable && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    voice.unlock();
+                    suggestTopic();
+                  }}
+                  disabled={!ready || state.awaitingReply}
+                  aria-label={t(lang, "suggestTopic")}
+                  title={t(lang, "suggestTopic")}
+                  className="icon-btn size-11 hover:text-amber-500"
+                >
+                  <BulbIcon />
+                </button>
+              )}
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
