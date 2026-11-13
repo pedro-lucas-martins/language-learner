@@ -161,6 +161,11 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Decision:** the browser keeps each sent utterance and links it to the next `transcript` (`OwnRecordings`, in order; cleared on a typed message, an error or a reconnect). A ▶ next to the learner's message replays it from memory (`own:<id>` in the player library, last 40 kept). No upload, no cost. The ⚙ menu also gets the "correction in the conversation" switch.
 - **Consequence:** the learner can compare what they said with what was transcribed and fix the transcript (regrade). Recordings are lost on page reload.
 
+## 024 — Side menu with a Flashcards page (2026-11-13)
+- **Context:** the author wanted a side menu to reach the flashcards.
+- **Decision:** a side menu with **Conversation** and **Flashcards** (fixed column from 1024 px, drawer behind ☰ on phones; Escape closes it). Flashcards get their own page in the main area, with a badge of cards due (`GET /flashcards?due=true`, refreshed on start, on page change, after new corrections and after each review; "50+" at the list limit). The right panel now shows only the corrections. The conversation stays mounted while the Flashcards page is open, so drafts, scroll and audio are kept.
+- **Consequence:** one more REST call per page change/correction (free, local). SPEC §9 still describes Corrections/Flashcards tabs; the slice 5 responsive shell should follow this layout instead.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |

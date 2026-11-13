@@ -140,10 +140,11 @@ The spend estimate multiplies summed usage by the `PRICE_*` settings.
 | `src/api.ts` | REST client: due flashcards, review (grade names → SM-2), delete |
 | `src/chat/ownRecordings.ts` | Links each sent recording to its transcript (▶ "hear my recording") |
 | `src/chat/corrections.ts` | Pure helpers: corrections list (newest first), «marked» card fronts |
-| `src/components/FeedbackPanel.tsx` | Tabs Corrections / Flashcards (side column ≥ 1024 px, sheet below) |
+| `src/components/SideNav.tsx` | Side menu: Conversation / Flashcards with due-cards badge (column ≥ 1024 px, drawer below) |
+| `src/components/FeedbackPanel.tsx` | Corrections of this conversation (side column ≥ 1024 px, sheet below) |
 | `src/components/CorrectionItem.tsx` | One message's grammar and pronunciation feedback |
 | `src/components/WordPractice.tsx` | ▶ 1× / 0.8× and 🎙 hold-to-retry for one word, with the verdict |
-| `src/components/FlashcardReview.tsx` | Review due cards: flip, grade, delete |
+| `src/components/FlashcardReview.tsx` | Review due cards (Flashcards page): flip, grade, delete, reports the count |
 | `src/index.css` | Theme tokens (`@theme`), building blocks (`@utility`), thinking-dots animation |
 | `src/theme.ts` | Light (default) / dark theme, remembered per browser |
 | `src/components/SettingsMenu.tsx` | ⚙ menu: level, interface language, pronunciation echo, theme, logout |

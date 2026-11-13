@@ -9,6 +9,8 @@ import { WordPractice } from "./WordPractice.tsx";
 interface Props {
   token: string;
   practice: Practice;
+  /** Called with the number of cards still due (for the menu badge). */
+  onCountChange?: (count: number) => void;
 }
 
 const GRADE_BUTTONS: [GradeName, StringKey, string][] = [
@@ -19,7 +21,7 @@ const GRADE_BUTTONS: [GradeName, StringKey, string][] = [
 ];
 
 /** Review due cards one by one (SM-2 runs on the server). */
-export function FlashcardReview({ token, practice }: Props) {
+export function FlashcardReview({ token, practice, onCountChange }: Props) {
   const { lang, targetLang } = practice;
   const [cards, setCards] = useState<Flashcard[] | null>(null);
   const [flipped, setFlipped] = useState(false);
@@ -39,6 +41,10 @@ export function FlashcardReview({ token, practice }: Props) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (cards) onCountChange?.(cards.length);
+  }, [cards, onCountChange]);
 
   const card = cards?.[0];
 

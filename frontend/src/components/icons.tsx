@@ -70,3 +70,19 @@ export const PencilIcon = (p: IconProps) => (
     <path d="M4 20h4L19 9l-4-4L4 16z" />
   </Icon>
 );
+export const MenuIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M4 7h16M4 12h16M4 17h16" />
+  </Icon>
+);
+export const ChatIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <path d="M5 5h14v10H9l-4 4z" />
+  </Icon>
+);
+export const CardsIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <rect x="7" y="4" width="12" height="15" rx="2" />
+    <path d="M4 8v10a2 2 0 0 0 2 2h9" />
+  </Icon>
+);
