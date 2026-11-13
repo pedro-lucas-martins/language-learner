@@ -16,6 +16,7 @@ from app.protocol import (
     ErrorMsg,
     ReadyMsg,
     RegradeMsg,
+    SetCorrectionMsg,
     SetLevelMsg,
     SetRecastMsg,
     SetUiLangMsg,
@@ -26,6 +27,7 @@ from app.protocol import (
     client_msg_adapter,
 )
 from app.security import is_allowed_origin
+from app.services import warmup
 from app.services.auth import authenticate
 from app.services.conversation import Conversation
 
@@ -77,14 +79,34 @@ async def chat_socket(websocket: WebSocket) -> None:
     # Turns run in their own task; the lock keeps each audio_meta next to its binary frame.
     send_lock = asyncio.Lock()
 
+    # Open provider connections now, so the first spoken turn is not the slow one.
+    tts = getattr(websocket.app.state, "tts", None)
+    warmup.schedule(
+        [websocket.app.state.llm, getattr(tts, "active", None), getattr(tts, "backup", None)]
+    )
+
+    closed = False
+
     async def send(msg: BaseModel) -> None:
+        nonlocal closed
+        if closed:
+            return  # e.g. feedback that finished after the learner left
         async with send_lock:
-            await websocket.send_text(msg.model_dump_json())
+            try:
+                await websocket.send_text(msg.model_dump_json())
+            except Exception:  # noqa: BLE001 — client gone (uvicorn/starlette raise various types)
+                closed = True
 
     async def send_audio(meta: AudioMetaMsg, data: bytes) -> None:
+        nonlocal closed
+        if closed:
+            return
         async with send_lock:
-            await websocket.send_text(meta.model_dump_json())
-            await websocket.send_bytes(data)
+            try:
+                await websocket.send_text(meta.model_dump_json())
+                await websocket.send_bytes(data)
+            except Exception:  # noqa: BLE001 — client gone (uvicorn/starlette raise various types)
+                closed = True
 
     conversation = await Conversation.start(
         user=user,
@@ -134,6 +156,8 @@ async def chat_socket(websocket: WebSocket) -> None:
                 await conversation.submit_text(msg.text)
             elif isinstance(msg, SetLevelMsg):
                 await conversation.set_level(msg.level)
+            elif isinstance(msg, SetCorrectionMsg):
+                await conversation.set_correction(msg.enabled)
             elif isinstance(msg, SetUiLangMsg):
                 await conversation.set_ui_lang(msg.ui_lang)
             elif isinstance(msg, SetRecastMsg):

@@ -78,11 +78,21 @@ async def record_llm(
 
 
 async def record_stt(
-    db: AsyncSession, *, user_id: uuid.UUID | None, model: str, usage: LlmUsage, seconds: float
+    db: AsyncSession,
+    *,
+    user_id: uuid.UUID | None,
+    model: str,
+    usage: LlmUsage,
+    seconds: float,
+    role: str = "stt",
 ) -> None:
-    """Token rows (priced as audio input) plus the audio seconds for the daily cap."""
-    await record_llm(db, user_id=user_id, role="stt", model=model, usage=usage)
-    db.add(UsageEvent(user_id=user_id, kind="stt_audio_s", role="stt", model=model, amount=seconds))
+    """Token rows plus the audio seconds for the daily cap.
+
+    `role` is "stt" (priced with PRICE_STT_*) or "utility" when the cheapest model was used
+    because the budget was reached.
+    """
+    await record_llm(db, user_id=user_id, role=role, model=model, usage=usage)
+    db.add(UsageEvent(user_id=user_id, kind="stt_audio_s", role=role, model=model, amount=seconds))
     await db.commit()
 
 
@@ -180,6 +190,15 @@ class UsageSnapshot:
     tts_chars_cap: int = 0
     stt_seconds_today: float = 0.0
     stt_seconds_cap: int = 0
+    tts_backup_chars_month: int = 0
+    tts_backup_allowance: int = 0
+
+    @property
+    def backup_over_allowance(self) -> bool:
+        """The backup TTS provider is at 95% of its own monthly allowance."""
+        return self.tts_backup_allowance > 0 and (
+            self.tts_backup_chars_month >= 0.95 * self.tts_backup_allowance
+        )
 
     def stt_cap_reached(self, extra_seconds: float = 0.0) -> bool:
         return self.stt_seconds_cap > 0 and (
@@ -217,4 +236,10 @@ async def snapshot(db: AsyncSession, settings: Settings, user_id: uuid.UUID) -> 
         tts_chars_cap=settings.daily_tts_chars_per_user,
         stt_seconds_today=await stt_seconds_today(db, user_id),
         stt_seconds_cap=settings.daily_stt_seconds_per_user,
+        tts_backup_chars_month=(
+            await tts_chars_month(db, settings.tts_fallback_provider)
+            if settings.tts_fallback_provider
+            else 0
+        ),
+        tts_backup_allowance=settings.tts_fallback_monthly_chars,
     )

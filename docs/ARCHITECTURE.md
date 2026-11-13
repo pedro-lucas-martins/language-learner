@@ -2,7 +2,7 @@
 
 Describes what exists **now**. Target design lives in [`SPEC.md`](SPEC.md).
 
-_Last updated: slice 3 (feedback, recast, regrade, flashcards and listen-and-repeat, backend and UI)._
+_Last updated: after slice 3 — corrections in the conversation, backup TTS provider, budget covering STT, warm-up._
 
 ## Overview
 
@@ -84,6 +84,7 @@ Every feedback with mistakes adds cards (`flashcards.py`, deduplicated). REST un
 | `app/services/usage.py` | `usage_events` rows, daily call cap, monthly spend estimate |
 | `app/services/conversation.py` | Per-socket orchestrator: turn tasks, barge-in, LLM → sentences → TTS, metrics |
 | `app/services/stt_service.py` | Gemini speech-to-text: verbatim prompt, retry, audio seconds |
+| `app/services/warmup.py` | Free warm-up calls on connect (at most every 5 min) |
 | `app/services/feedback.py` | Track 2 prompts per direction, JSON schema, validation and filters |
 | `app/services/flashcards.py` | Cards from feedback (front/back, dedupe) |
 | `app/services/sm2.py` | SM-2 scheduling (pure) |
@@ -95,7 +96,7 @@ Every feedback with mistakes adds cards (`flashcards.py`, deduplicated). REST un
 | `app/services/tts/edge.py` | edge-tts, the free fallback (MP3) |
 | `app/services/tts/chain.py` | Active provider → edge-tts → `TtsUnavailable` (browser speaks); retry once |
 | `app/services/tts/cache.py` | `tts_cache` table access, sha256 key, LRU eviction by `TTS_CACHE_MAX_MB` |
-| `alembic/` | Migrations `0001`–`0004` (initial, tts_cache, feedback + flashcards, ui_lang) |
+| `alembic/` | Migrations `0001`–`0005` (initial, tts_cache, feedback + flashcards, ui_lang, correct_in_chat) |
 | `scripts/create_user.py` | Creates a learner and prints the token once |
 | `scripts/stt_eval.py` | Runs your recorded clips through the STT and compares with what you said |
 | `scripts/tts_bench.py` | TTS benchmark: TTFA per provider × language, blind A/B page, asks before spending |
@@ -104,7 +105,16 @@ Every feedback with mistakes adds cards (`flashcards.py`, deduplicated). REST un
 chain (`GEMINI_CHAT_MODEL` → `GEMINI_UTILITY_MODEL`). When the monthly budget is reached
 only the utility model is used. Once text has been streamed, errors are not retried.
 
-**TTS chain:** the provider in `TTS_PROVIDER` is tried first (one retry for 429/5xx/timeout,
+**Correction in the conversation:** with `correct_in_chat` on, the chat prompt asks for one
+natural correction at the start of the reply (A1/A2 add one short reason in `ui_lang`).
+
+**Warm-up:** on connect, `warmup.py` makes free metadata calls to Gemini, ElevenLabs and Google
+(at most every 5 min) so the first turn does not pay for DNS/TLS/auth.
+
+**Budget:** over `MONTHLY_BUDGET_USD` (Gemini only), chat, feedback and STT use the utility model.
+
+**TTS chain:** the provider in `TTS_PROVIDER` is tried first, then the optional backup
+`TTS_FALLBACK_PROVIDER` (own allowance), then edge-tts. (one retry for 429/5xx/timeout,
 3 s to first byte); before any audio is sent it can fall back to edge-tts; if that fails too the
 caller must ask the browser to speak (`TtsUnavailable`). Over 95% of `TTS_MONTHLY_CHARS` or over
 the daily character cap, edge-tts is used directly. A `tts_chars` row is written per request.

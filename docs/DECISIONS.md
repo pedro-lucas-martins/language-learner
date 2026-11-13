@@ -144,6 +144,18 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Decision (author's choice: speed):** `GEMINI_STT_MODEL=gemini-3.5-flash-lite`, `GEMINI_STT_THINKING_LEVEL=LOW` (LOW also helps this model: 36% → 19% with context).
 - **Consequence:** ~1 s faster per voice turn and 2.5× cheaper STT. Flash-Lite depends much more on the context: in a check where the clips did not answer the AI's last message, transcripts were poor ("Mas na i mi, Pedro."), while 3.8-flash stays ~14% without context. The editable transcript covers mistakes; revisit (3.6-flash is the middle ground) if wrong transcripts become frequent.
 
+## 022 — Plan for ~R$ 75/month: ElevenLabs Starter + precise STT, corrections in the conversation (2026-11-13)
+- **Context:** usage drops to ~2 h every two days (~30 h/month, ~5,400 turns). The author wants the most faithful transcription, the AI correcting mistakes during the conversation, and chose ElevenLabs Starter (US$ 6) + `gemini-3.8-flash` STT with a hard ceiling of R$ 75/month (~US$ 13 at R$ 5.50 + 3.5% IOF).
+- **Costs estimated** from measured token usage: Gemini ~US$ 8 until Dec/2026, ~US$ 11 from Jan/2027 (3.x Flash doubles); Starter ~US$ 6 → ~R$ 79 / ~R$ 95 without a cap. ElevenLabs Starter = 150,000 Flash characters/month (pricing page, 2026-11-13), ~1/4 of the ~600,000 characters the AI speaks at this usage.
+- **Decisions:**
+  - `MONTHLY_BUDGET_USD=7` (R$ 75 minus the subscription; the app does not see subscriptions). Over budget, **STT too** switches to `GEMINI_UTILITY_MODEL` (no thinking level); its usage rows use role `utility`. SPEC §1 updated.
+  - **Backup TTS provider** `TTS_FALLBACK_PROVIDER=google` (own allowance `TTS_FALLBACK_MONTHLY_CHARS`), tried before edge-tts: when the Starter characters run out, Google Chirp 3 HD (free up to 1M/month) speaks instead of edge. SPEC §6 updated.
+  - **Correction in the conversation** (`users.correct_in_chat`, default on, `set_correction`): one mistake per reply, said naturally, then the conversation goes on; A1/A2 add one short sentence in `ui_lang` saying why; B1+ only in the target language. The correction counts toward the reply length; "never correct what is already right". SPEC §4.1 updated (Track 1 used to never correct).
+  - **Warm-up:** on connect, free metadata calls (Gemini `models.get`, ElevenLabs `/v1/models`, Google `list_voices`) at most every 5 min.
+  - Daily caps raised for 2 h sessions: 1,200 LLM calls, 45,000 TTS characters.
+- **Measured (2026-11-13):** first voice turn right after a restart: first audio 4.2 s (was ~10 s cold), STT 2.8 s (was 4.7 s). Corrections: a correct sentence was left alone; "Ja mam dwa kot" → "Mówimy: dwa koty." + a Portuguese reason (slightly imprecise: says genitive); B1: "A gente diz «eu fui ao cinema»." Before the "already right" rule, one reply "corrected" a correct form after the STT had itself fixed the learner's mistake.
+- **Consequence:** in-conversation corrections depend on the transcript — when the STT silently fixes a mistake, the AI cannot correct it (hearing your own recording, 4b, makes this visible). Flash-Lite explanations can be slightly wrong.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |

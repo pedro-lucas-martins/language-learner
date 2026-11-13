@@ -118,6 +118,14 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
 - [ ] Para voltar ao Google (grátis até 1M caracteres/mês): `TTS_PROVIDER=google` e `TTS_MONTHLY_CHARS=1000000`,
       depois `docker compose up -d backend`.
 
+## Plano de ~R$ 75/mês (ElevenLabs Starter + transcrição 3.8)
+
+- [ ] Assinar o **ElevenLabs Starter** (US$ 6/mês; 1º mês US$ 1). Se houver cobrança por excedente, deixe **desligada**.
+- [ ] Depois de assinar, me avise: eu ajusto `TTS_MONTHLY_CHARS=150000` e testo as **vozes nativas** (Magdalena/Kamil, Raquel/Paulo).
+- [ ] Quando os 150 mil caracteres do mês acabarem, a voz do **Google** assume sozinha (grátis até 1 milhão/mês).
+- [ ] O teto do Gemini está em `MONTHLY_BUDGET_USD=7` (R$ 75 − assinatura). Ao atingir, conversa, correções e transcrição
+      passam para o modelo mais barato até o mês virar.
+
 ## Fatia 6 (deploy) — detalhado depois
 
 Contas gratuitas em Supabase, Render e Vercel.

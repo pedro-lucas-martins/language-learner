@@ -59,6 +59,8 @@ class User(Base):
     user_facts: Mapped[str] = mapped_column(Text, default="")
     voice_id: Mapped[str | None] = mapped_column(String(120), nullable=True)
     recast_pronunciation: Mapped[bool] = mapped_column(Boolean, default=True)
+    # Correction in the conversation (SPEC §4.1).
+    correct_in_chat: Mapped[bool] = mapped_column(Boolean, default=True)
     access_token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

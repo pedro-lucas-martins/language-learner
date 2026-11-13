@@ -174,3 +174,56 @@ def test_pick_voice_without_voices_is_not_configured() -> None:
         pick_voice([], "x")
     assert exc_info.value.code == "not_configured"
     assert pick_voice([Voice(("a", "A"))], None) == "a"
+
+
+def make_chain_with_backup(active: FakeTts | None, backup: FakeTts, edge: FakeTts):
+    record = Recorder()
+    chain = TtsChain(active, edge, backup=backup, cache=None, retry_delay_s=0)
+    return BoundChain(chain, record), record
+
+
+async def test_backup_provider_comes_before_edge() -> None:
+    active = FakeTts("elevenlabs", fail=["quota", "quota"])
+    backup, edge = FakeTts("google"), FakeTts("edge")
+    chain, record = make_chain_with_backup(active, backup, edge)
+    chunks = await collect(chain.stream("Hej", "pl-PL", "elevenlabs-M"))
+    assert {c.provider for c in chunks} == {"google"}
+    assert backup.calls[0][2] == "google-M"  # same voice position as the active provider
+    assert edge.calls == [] and record.rows == [("google", "google-model", 3)]
+
+
+async def test_over_allowance_goes_to_backup_then_edge() -> None:
+    active, backup, edge = FakeTts("elevenlabs"), FakeTts("google"), FakeTts("edge")
+    chain, _ = make_chain_with_backup(active, backup, edge)
+    chunks = await collect(chain.stream("Hej", "pl-PL", None, over_allowance=True))
+    assert chunks[0].provider == "google" and active.calls == []
+    chunks = await collect(
+        chain.stream("Hej", "pl-PL", None, over_allowance=True, backup_over_allowance=True)
+    )
+    assert chunks[0].provider == "edge"
+
+
+def test_backup_provider_is_only_built_when_useful() -> None:
+    from app.services.tts.chain import build_backup_provider
+    from tests.conftest import make_settings
+
+    assert build_backup_provider(make_settings()) is None  # not set
+    assert (
+        build_backup_provider(
+            make_settings(tts_provider="elevenlabs", tts_fallback_provider="google")
+        )
+        is None
+    )  # google has no credentials here
+    same = make_settings(
+        tts_provider="google",
+        tts_fallback_provider="google",
+        google_application_credentials="/x.json",
+    )
+    assert build_backup_provider(same) is None  # same as the active one
+    ok = make_settings(
+        tts_provider="elevenlabs",
+        tts_fallback_provider="google",
+        google_application_credentials="/x.json",
+    )
+    backup = build_backup_provider(ok)
+    assert backup is not None and backup.name == "google"

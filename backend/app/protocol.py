@@ -49,6 +49,11 @@ class SetRecastMsg(_Msg):
     enabled: bool
 
 
+class SetCorrectionMsg(_Msg):
+    type: Literal["set_correction"]
+    enabled: bool
+
+
 class SetUiLangMsg(_Msg):
     type: Literal["set_ui_lang"]
     ui_lang: Lang
@@ -83,6 +88,7 @@ ClientMsg = Annotated[
     | SetRecastMsg
     | SpeakWordMsg
     | SetUiLangMsg
+    | SetCorrectionMsg
     | StartOfSpeechMsg
     | EndOfSpeechMsg
     | UserStartedSpeakingMsg,
@@ -101,6 +107,7 @@ class UserInfo(BaseModel):
     ui_lang: Lang
     level: Level
     recast_pronunciation: bool
+    correct_in_chat: bool
 
 
 class ReadyMsg(BaseModel):

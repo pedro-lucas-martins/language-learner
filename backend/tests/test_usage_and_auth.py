@@ -114,3 +114,25 @@ async def test_tts_over_allowance_at_95_percent_or_daily_cap(sync_engine: Engine
     assert at_95.tts_over_allowance
     assert capped.tts_chars_today == 95  # edge characters are not counted
     assert capped.tts_over_allowance
+
+
+async def test_backup_allowance_is_tracked_separately(sync_engine: Engine) -> None:
+    add_user(sync_engine)
+    async with session_factory()() as db:
+        from sqlalchemy import select
+
+        from app.models import User
+
+        user = await db.scalar(select(User))
+        assert user is not None
+        await usage_svc.record_tts(db, user_id=user.id, provider="google", model="m", chars=96)
+        settings = make_settings(
+            tts_provider="elevenlabs",
+            tts_fallback_provider="google",
+            tts_fallback_monthly_chars=100,
+            tts_monthly_chars=1000,
+        )
+        snap = await usage_svc.snapshot(db, settings, user.id)
+    assert snap.tts_backup_chars_month == 96
+    assert snap.backup_over_allowance
+    assert not snap.tts_over_allowance  # the active provider's allowance is separate

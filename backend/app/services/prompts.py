@@ -54,6 +54,40 @@ RECAST_RULE = (
 )
 
 
+NO_CORRECTION_RULE = (
+    "Never explain grammar, never correct the learner explicitly, never list mistakes. "
+    "Corrections are shown elsewhere in the app."
+)
+
+_BEGINNER_LEVELS = ("A1", "A2")
+
+
+def correction_rule(*, level: str, target_lang: str, explain_lang: str) -> str:
+    """Correction in the conversation (SPEC §4.1): one mistake, then carry on."""
+    target, explain = LANG_NAMES[target_lang], LANG_NAMES[explain_lang]
+    rule = (
+        "Correction in the conversation: if the learner's last message has a clear mistake, "
+        "start your reply by correcting ONE mistake only (the most important one): say the "
+        "correct form naturally, the way a friendly native would (for example: 'We say X.'), "
+        "then carry on with the conversation in the same reply as usual. Never correct more "
+        "than one thing, never list mistakes, never give a lecture. Only correct a mistake you "
+        "are sure about: never 'correct' a form that is already right, and never repeat the "
+        "learner's own correct words as if they were a correction. If there is no clear "
+        "mistake, do not correct anything. The correction counts toward your length limit: "
+        "at most two short sentences in total (correction included), then one short question."
+    )
+    if level in _BEGINNER_LEVELS and explain_lang != target_lang:
+        rule += (
+            f" Because the learner is a beginner, right after the correct form add ONE short "
+            f"sentence in {explain} saying why (this is the only exception to replying in "
+            f"{target}, and it does not count toward the length limit), then continue in "
+            f"{target}."
+        )
+    else:
+        rule += f" Say the correction in {target} only; do not explain the rule."
+    return rule
+
+
 def chat_system_prompt(
     *,
     target_lang: str,
@@ -62,8 +96,14 @@ def chat_system_prompt(
     user_facts: str,
     summary: str,
     recast: bool = False,
+    correct: bool = False,
+    explain_lang: str | None = None,
 ) -> str:
-    """System prompt for Track 1 (conversation). `recast`: the last message has audio."""
+    """System prompt for Track 1 (conversation).
+
+    `recast`: the last message has audio. `correct`: correction in the conversation is on;
+    `explain_lang` (the learner's ui_lang) is used for the beginners' one-sentence reason.
+    """
     lang = LANG_NAMES[target_lang]
     static = (
         f"{_PERSONA[target_lang]}\n\n"
@@ -71,14 +111,20 @@ def chat_system_prompt(
         f"- Reply ONLY in {lang}.\n"
         "- Reply like a friend in a spoken conversation: 1 or 2 short sentences, then exactly "
         "one short question that keeps the conversation going.\n"
-        "- Never explain grammar, never correct the learner explicitly, never list mistakes. "
-        "Corrections are shown elsewhere in the app.\n"
         "- No emojis, no markdown, no lists: your text is read aloud.\n"
         "- If the learner writes in their native language, answer in "
         f"{lang} using simple words.\n\n"
         f"{_DIRECTION_NOTES[target_lang]}"
     )
     parts = [static, _LEVEL_RULES[level]]
+    if correct:
+        parts.append(
+            correction_rule(
+                level=level, target_lang=target_lang, explain_lang=explain_lang or native_lang
+            )
+        )
+    else:
+        parts.append(NO_CORRECTION_RULE)
     if recast:
         parts.append(RECAST_RULE)
     if user_facts.strip():

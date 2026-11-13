@@ -54,3 +54,53 @@ def test_summary_prompt_lists_turns() -> None:
 def test_truncate_words() -> None:
     assert truncate_words("a b c d", 2) == "a b"
     assert truncate_words("a b", 5) == "a b"
+
+
+def test_correction_rule_beginner_explains_in_ui_language() -> None:
+    from app.services.prompts import chat_system_prompt
+
+    prompt = chat_system_prompt(
+        target_lang="pl-PL",
+        native_lang="pt-BR",
+        level="A1",
+        user_facts="",
+        summary="",
+        correct=True,
+        explain_lang="pt-BR",
+    )
+    assert "correcting ONE mistake only" in prompt
+    assert "never 'correct' a form that is already right" in prompt
+    assert "counts toward your length limit" in prompt
+    assert "ONE short sentence in Brazilian Portuguese saying why" in prompt
+    assert "Never explain grammar" not in prompt
+
+
+def test_correction_rule_from_b1_stays_in_target_language() -> None:
+    from app.services.prompts import chat_system_prompt
+
+    prompt = chat_system_prompt(
+        target_lang="pt-BR",
+        native_lang="pl-PL",
+        level="B1",
+        user_facts="",
+        summary="",
+        correct=True,
+        explain_lang="pl-PL",
+    )
+    assert "correcting ONE mistake only" in prompt
+    assert "Say the correction in Brazilian Portuguese only" in prompt
+    assert "saying why" not in prompt
+
+
+def test_correction_off_keeps_the_no_correction_rule() -> None:
+    from app.services.prompts import chat_system_prompt
+
+    prompt = chat_system_prompt(
+        target_lang="pl-PL",
+        native_lang="pt-BR",
+        level="A1",
+        user_facts="",
+        summary="",
+    )
+    assert "Never explain grammar" in prompt
+    assert "Correction in the conversation" not in prompt

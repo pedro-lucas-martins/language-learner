@@ -80,6 +80,9 @@ class Settings(BaseSettings):
     tts_provider: TtsProviderName = "google"
     # Allowance of the active provider (free tier or plan); fallback kicks in at 95%.
     tts_monthly_chars: int = Field(default=1_000_000, ge=0)
+    # Optional backup provider used before edge-tts (e.g. google), with its own allowance.
+    tts_fallback_provider: TtsProviderName | Literal[""] = ""
+    tts_fallback_monthly_chars: int = Field(default=1_000_000, ge=0)
 
     # --- Google Cloud Text-to-Speech (Chirp 3 HD) ---
     # Path to a service-account JSON file (standard Google ADC variable).

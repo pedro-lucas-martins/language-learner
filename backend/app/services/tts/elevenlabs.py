@@ -41,6 +41,10 @@ class ElevenLabsTts:
             )
         return self._client
 
+    async def warm(self) -> None:
+        """Open the HTTPS connection with a free call (model list)."""
+        await self._get_client().get("https://api.elevenlabs.io/v1/models")
+
     async def _raw_stream(
         self, text: str, lang: LangCode, voice_id: str, speaking_rate: float
     ) -> AsyncIterator[bytes]:

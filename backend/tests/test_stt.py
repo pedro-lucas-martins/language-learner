@@ -111,3 +111,23 @@ async def test_missing_model_is_not_configured() -> None:
             record=Recorder(),
         )
     assert info.value.code == "not_configured"
+
+
+async def test_over_budget_uses_the_cheapest_model_without_thinking() -> None:
+    llm = FakeLlm()
+    await transcribe(
+        llm,
+        make_settings(
+            gemini_stt_model="stt-model",
+            gemini_utility_model="cheap",
+            gemini_stt_thinking_level="LOW",
+        ),
+        audio=b"x" * 4000,
+        mime="audio/webm",
+        target_lang="pl-PL",
+        native_lang="pt-BR",
+        record=Recorder(),
+        budget_exceeded=True,
+    )
+    call = llm.transcribe_calls[0]
+    assert call["model"] == "cheap" and call["thinking_level"] == ""

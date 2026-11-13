@@ -106,6 +106,7 @@ def test_ready_contains_user_info(client: TestClient, sync_engine: Engine) -> No
         "target_lang": "pt-BR",
         "level": "B2",
         "recast_pronunciation": True,
+        "correct_in_chat": True,
     }
 
 

@@ -279,3 +279,25 @@ def test_stt_gets_the_last_ai_reply_as_context(
     first, second = fake_llm.transcribe_calls[:2]
     assert "Context" not in str(first["system"])  # nothing said yet
     assert f"«{REPLY}»" in str(second["system"])
+
+
+def test_over_budget_voice_turn_transcribes_with_the_cheap_model(
+    voice_client: TestClient, sync_engine: Engine, fake_llm: FakeLlm
+) -> None:
+    app.state.settings = make_settings(
+        gemini_stt_model="stt-model", monthly_budget_usd=0.000001, price_chat_input_per_m=1.0
+    )
+    token = add_user(sync_engine)
+    with voice_client.websocket_connect("/ws", headers={"origin": ORIGIN}) as ws:
+        _login(ws, token)
+        _speak(ws)
+        _events_until(ws, "usage", "error")  # first turn spends money: budget now exceeded
+        _speak(ws)
+        _events_until(ws, "usage", "error")
+    assert fake_llm.transcribe_calls[0]["model"] == "stt-model"
+    assert fake_llm.transcribe_calls[1]["model"] == "utility-model"
+    with Session(sync_engine) as db:
+        roles = {
+            u.role for u in db.scalars(select(UsageEvent).where(UsageEvent.kind == "stt_audio_s"))
+        }
+    assert roles == {"stt", "utility"}

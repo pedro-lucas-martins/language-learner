@@ -93,8 +93,13 @@ async def transcribe(
     native_lang: str,
     record: RecordStt,
     context: str | None = None,
+    budget_exceeded: bool = False,
 ) -> SttResult:
+    """Over the monthly budget the cheapest model transcribes instead (SPEC §1)."""
     model = settings.gemini_stt_model
+    thinking_level = settings.gemini_stt_thinking_level
+    if budget_exceeded and settings.gemini_utility_model:
+        model, thinking_level = settings.gemini_utility_model, ""
     if not model:
         raise SttError("not_configured", "GEMINI_STT_MODEL is empty")
     system = stt_system_prompt(target_lang, native_lang, context)
@@ -108,7 +113,7 @@ async def transcribe(
                 audio=audio,
                 mime=gemini_mime(mime),
                 max_output_tokens=STT_MAX_OUTPUT_TOKENS,
-                thinking_level=settings.gemini_stt_thinking_level,
+                thinking_level=thinking_level,
             )
         except LlmError as exc:
             last = exc

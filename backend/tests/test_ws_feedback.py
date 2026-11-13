@@ -237,3 +237,26 @@ def test_set_ui_lang_switches_explanations_and_messages(
     assert error["message"] == "Mensagem inválida."  # server messages follow ui_lang too
     with Session(sync_engine) as db:
         assert db.scalars(select(User)).one().ui_lang == "pt-BR"
+
+
+def test_correction_in_chat_is_on_by_default_and_can_be_turned_off(
+    fb_client: TestClient, sync_engine: Engine, fake_llm: FakeLlm
+) -> None:
+    token = add_user(sync_engine)  # pt-BR learner of Polish, A1
+    with fb_client.websocket_connect("/ws", headers={"origin": ORIGIN}) as ws:
+        ws.send_json({"type": "auth", "token": token})
+        assert ws.receive_json()["user"]["correct_in_chat"] is True
+        ws.receive_json()
+        ws.send_json({"type": "user_text", "text": "Ja mam dwa kot w domu."})
+        _until(ws, "usage")
+        system_on = str(fake_llm.stream_calls[-1]["system"])
+        ws.send_json({"type": "set_correction", "enabled": False})
+        assert _until(ws, "user_updated")[-1]["user"]["correct_in_chat"] is False
+        ws.send_json({"type": "user_text", "text": "Ja mam dwa kot w domu."})
+        _until(ws, "usage")
+        system_off = str(fake_llm.stream_calls[-1]["system"])
+    assert "correcting ONE mistake only" in system_on
+    assert "saying why" in system_on  # A1 → one short reason in the UI language
+    assert "Never explain grammar" in system_off
+    with Session(sync_engine) as db:
+        assert db.scalars(select(User)).one().correct_in_chat is False

@@ -28,7 +28,7 @@ Core experience: **free talk** with a friendly native-speaker AI, adapted to the
 Paid services allowed: **Google Gemini API (paid tier)** and **one TTS provider** chosen by benchmark (§6): **Google Cloud Text-to-Speech (Chirp 3 HD)** or **ElevenLabs**. Everything else (hosting, DB, CI) stays on free tiers.
 - Monthly budget is configurable (`MONTHLY_BUDGET_USD`, default 15). The backend tracks actual usage (Gemini tokens by type, TTS characters by provider) in Postgres and estimates spend using unit prices from config (`PRICE_*` env vars, never hardcoded).
 - Per-user daily caps (LLM calls, STT audio seconds, TTS characters), configurable in `config.py`.
-- When the active TTS provider's monthly character allowance (`TTS_MONTHLY_CHARS`, e.g. the free tier or the plan's included characters) reaches 95%, TTS switches automatically to the free fallback chain (§6) and the UI shows it. This prevents overage charges. When the monthly USD budget is reached, the LLM switches to the cheapest configured model and the UI warns.
+- When the active TTS provider's monthly character allowance (`TTS_MONTHLY_CHARS`, e.g. the free tier or the plan's included characters) reaches 95%, TTS switches automatically to the fallback chain (§6) and the UI shows it. This prevents overage charges. When the monthly USD budget is reached, every Gemini role — conversation, feedback **and STT** — switches to the cheapest configured model (`GEMINI_UTILITY_MODEL`) until the month ends, and the UI warns. Fixed subscriptions (e.g. a TTS plan) are not seen by the app: set `MONTHLY_BUDGET_USD` to the total budget minus them.
 - Every external call must handle HTTP 429 / quota / 5xx errors gracefully (one retry with backoff, then a typed `error` event or fallback). Never crash the WebSocket.
 - No other paid service may be added without the user's explicit approval.
 
@@ -54,7 +54,7 @@ The Gemini paid tier is required (not free tier) because free-tier content may b
 ## 3. Users, access and security
 
 - Small number of known users (personal project). No public sign-up.
-- `users` table: `id, name, native_lang, target_lang, ui_lang (nullable → native_lang), level, user_facts (≤100 words), voice_id, recast_pronunciation (bool, default true), access_token_hash, created_at`.
+- `users` table: `id, name, native_lang, target_lang, ui_lang (nullable → native_lang), level, user_facts (≤100 words), voice_id, recast_pronunciation (bool, default true), correct_in_chat (bool, default true), access_token_hash, created_at`.
 - `usage_events` table: `user_id, kind (llm_in|llm_out|stt_audio_s|tts_chars), model, amount, created_at` — the single source for daily caps, monthly spend estimate and the usage HUD.
 - A CLI script `backend/scripts/create_user.py` creates a user and prints a random access token once (store only the hash).
 - Frontend: a login screen asking for the token; stored in `localStorage` (wrapped in try/catch).
@@ -82,7 +82,10 @@ Level rules:
 - **B1/B2**: natural everyday speech, some idioms, open questions.
 - **C1**: native register, idioms, slang, debate-style questions.
 
-Track 1 reply limits: 1–2 sentences + 1 short question, in `target_lang` only. Never explain grammar in Track 1.
+Track 1 reply limits: 1–2 sentences + 1 short question, in `target_lang`.
+
+**Correction in the conversation (default ON, per-user setting `users.correct_in_chat`):**
+When the learner's message has a clear mistake, the reply starts by correcting **one** mistake (the most important) — saying the correct form naturally, the way a friendly native would — and then carries on with the conversation in the same reply. At A1/A2 it adds **one short sentence** in the learner's explanation language (`ui_lang`) saying why; from B1 up the correction stays in `target_lang` only. Never more than one correction per reply, no lists, no lecture; the full explanation stays in Track 2 (§5). If the setting is OFF, Track 1 never corrects or explains grammar.
 
 **Pronunciation recast in conversation (default ON, per-user setting `users.recast_pronunciation`):**
 For voice turns, Track 1 receives the user's **audio** together with the verbatim transcript (the chat model listens, it does not just read). When the user clearly mispronounces a word, the reply naturally reuses that word pronounced correctly — the way a native friend would echo it — at most once per reply, without saying "you pronounced it wrong" and without any explanation. Explanations belong to Track 2 only. If the setting is OFF, or the turn was typed, Track 1 gets text only and never recasts.
@@ -168,7 +171,7 @@ mic → (client VAD / push-to-talk) → audio blob over WS → STT → LLM strea
 - Voices: a curated list per provider and language in config (`GOOGLE_TTS_VOICES_PL/PT`, `ELEVENLABS_VOICES_PL/PT`, as `id:label` pairs, ≥2 per language). The user picks one in settings; stored on `users.voice_id`. If the stored id is not in the active provider's list for that language, use the first voice of the list.
 - TTS cache: table `tts_cache (hash, provider, voice_id, model, mime, audio bytea, bytes, last_used_at)`, key = sha256(provider + voice + model + rate + text). Used for topic icebreakers, words in the pronunciation panel and any repeated text. Capped by `TTS_CACHE_MAX_MB` with LRU eviction. Message replay on the client uses the audio it already received (keep blobs per message in memory) — never re-synthesize for replay; replay at 0.8× uses `playbackRate`.
 - `backend/scripts/precompute_topic_audio.py` synthesizes all topics for the default voices into the cache (run once by the user; prints the character count and estimated cost before asking for confirmation).
-- Fallback chain: if the active provider fails, times out, or `TTS_MONTHLY_CHARS` is at 95% → edge-tts voices from config (`pl-PL-ZofiaNeural`, `pl-PL-MarekNeural`, `pt-BR-FranciscaNeural`, `pt-BR-AntonioNeural`) → if that also fails, send `{"type":"tts_fallback","text":...}` and the client speaks it with `speechSynthesis`.
+- Fallback chain: if the active provider fails, times out, or `TTS_MONTHLY_CHARS` is at 95% → the optional backup provider `TTS_FALLBACK_PROVIDER` (e.g. `google`, skipped when it has no credentials or is at 95% of `TTS_FALLBACK_MONTHLY_CHARS`) → edge-tts voices from config (`pl-PL-ZofiaNeural`, `pl-PL-MarekNeural`, `pt-BR-FranciscaNeural`, `pt-BR-AntonioNeural`) → if that also fails, send `{"type":"tts_fallback","text":...}` and the client speaks it with `speechSynthesis`.
 
 ### TTS benchmark (`backend/scripts/tts_bench.py`)
 Purpose: choose the TTS provider with our own data, using only free tiers.
@@ -204,12 +207,13 @@ Client → server:
 | `regrade` | `message_id`, `text` (grammar only — no audio) |
 | `set_recast` | `enabled` (bool) — pronunciation recast in Track 1 (§4.1) |
 | `set_ui_lang` | `ui_lang` (`pt-BR` \| `pl-PL`) — interface and explanation language (§1) |
+| `set_correction` | `enabled` (bool) — correction in the conversation (§4.1) |
 | `speak_word` | `word` — returns cached TTS audio for the panel's ▶ button |
 
 Server → client:
 | type | payload |
 |---|---|
-| `ready` | `user` (name, `native_lang`, `target_lang`, `ui_lang`, level, voice, `recast_pronunciation`), `session_id` |
+| `ready` | `user` (name, `native_lang`, `target_lang`, `ui_lang`, level, voice, `recast_pronunciation`, `correct_in_chat`), `session_id` |
 | `user_updated` | `user` (same shape as in `ready`) — after `set_level` or other settings changes |
 | `transcript` | `message_id`, `text` |
 | `ai_text_delta` | `message_id`, `delta` |

@@ -25,6 +25,7 @@ export type ClientMsg =
   | { type: "set_recast"; enabled: boolean }
   | { type: "speak_word"; word: string }
   | { type: "set_ui_lang"; ui_lang: Lang }
+  | { type: "set_correction"; enabled: boolean }
   | {
       type: "start_of_speech";
       mime: string;
@@ -45,6 +46,8 @@ export interface UserInfo {
   ui_lang: Lang;
   level: Level;
   recast_pronunciation: boolean;
+  /** Correction in the conversation (SPEC §4.1). */
+  correct_in_chat: boolean;
 }
 
 /** One grammar mistake (SPEC §5); explanations are in the learner's native language. */

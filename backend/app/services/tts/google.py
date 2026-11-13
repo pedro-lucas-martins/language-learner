@@ -38,6 +38,10 @@ class GoogleTts:
             self._client = texttospeech.TextToSpeechAsyncClient(credentials=credentials)
         return self._client
 
+    async def warm(self) -> None:
+        """Open the gRPC channel with a free call (voice list)."""
+        await self._get_client().list_voices(language_code="pl-PL")
+
     @staticmethod
     def _map_error(exc: Exception) -> TtsError:
         from google.api_core import exceptions as gexc

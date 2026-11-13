@@ -122,10 +122,16 @@ class LlmProvider(Protocol):
 
 
 class GeminiProvider:
-    def __init__(self, api_key: str, thinking_level: str = "") -> None:
+    def __init__(self, api_key: str, thinking_level: str = "", warm_model: str = "") -> None:
         self._api_key = api_key
         self._thinking_level = thinking_level.upper()
+        self._warm_model = warm_model
         self._client = None
+
+    async def warm(self) -> None:
+        """Open the connection with a free metadata call (no tokens billed)."""
+        if self._api_key and self._warm_model:
+            await self._get_client().aio.models.get(model=self._warm_model)
 
     def _get_client(self):  # type: ignore[no-untyped-def]
         if not self._api_key:

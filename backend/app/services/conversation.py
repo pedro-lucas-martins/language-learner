@@ -92,6 +92,7 @@ class Learner:
     recast_pronunciation: bool
     voice_id: str | None = None
     ui_lang: str = ""
+    correct_in_chat: bool = True
 
     def __post_init__(self) -> None:
         self.ui_lang = self.ui_lang or self.native_lang
@@ -108,6 +109,7 @@ class Learner:
             recast_pronunciation=user.recast_pronunciation,
             voice_id=user.voice_id,
             ui_lang=user.ui_lang or user.native_lang,
+            correct_in_chat=user.correct_in_chat,
         )
 
     def info(self) -> UserInfo:
@@ -118,6 +120,7 @@ class Learner:
             ui_lang=self.ui_lang,  # type: ignore[arg-type]
             level=self.level,  # type: ignore[arg-type]
             recast_pronunciation=self.recast_pronunciation,
+            correct_in_chat=self.correct_in_chat,
         )
 
 
@@ -218,9 +221,11 @@ class Conversation:
     def _tts_provider_active(self, snap: usage_svc.UsageSnapshot) -> str:
         if self.tts is None:
             return "browser"
-        if self.tts.active is None or snap.tts_over_allowance:
-            return self.tts.fallback.name
-        return self.tts.active.name
+        if self.tts.active is not None and not snap.tts_over_allowance:
+            return self.tts.active.name
+        if self.tts.backup is not None and not snap.backup_over_allowance:
+            return self.tts.backup.name
+        return self.tts.fallback.name
 
     async def _send_usage(self) -> usage_svc.UsageSnapshot:
         snap = await self._snapshot()
@@ -251,6 +256,19 @@ class Conversation:
             await self._error("bad_request")
             return
         self.learner.ui_lang = ui_lang
+        await self.send(UserUpdatedMsg(user=self.learner.info()))
+
+    async def set_correction(self, enabled: bool) -> None:
+        """Correction in the conversation on/off (SPEC §4.1)."""
+        async with session_factory()() as db:
+            user = await db.get(User, self.learner.id)
+            if user is not None:
+                user.correct_in_chat = enabled
+            await db.commit()
+        if user is None:
+            await self._error("bad_request")
+            return
+        self.learner.correct_in_chat = enabled
         await self.send(UserUpdatedMsg(user=self.learner.info()))
 
     async def set_recast(self, enabled: bool) -> None:
@@ -382,6 +400,7 @@ class Conversation:
                 native_lang=self.learner.native_lang,
                 record=self._record_stt,
                 context=self._last_ai_text(),
+                budget_exceeded=snap.budget_exceeded,
             )
         except SttError as exc:
             await self._error("not_configured" if exc.code == "not_configured" else "stt_failed")
@@ -416,7 +435,13 @@ class Conversation:
         sentences: asyncio.Queue[str | None] = asyncio.Queue()
         speaker = (
             asyncio.create_task(
-                self._speak(ai_msg_id, sentences, timings, over=snap.tts_over_allowance)
+                self._speak(
+                    ai_msg_id,
+                    sentences,
+                    timings,
+                    over=snap.tts_over_allowance,
+                    backup_over=snap.backup_over_allowance,
+                )
             )
             if self.tts is not None
             else None
@@ -491,13 +516,20 @@ class Conversation:
         timings: Timings,
         *,
         over: bool,
+        backup_over: bool = False,
     ) -> None:
         """Synthesize the reply's sentences in order."""
         index = 0
         seq = 0
         while (sentence := await sentences.get()) is not None:
             seq = await self._speak_sentence(
-                str(ai_msg_id), index, sentence, seq, over=over, timings=timings
+                str(ai_msg_id),
+                index,
+                sentence,
+                seq,
+                over=over,
+                backup_over=backup_over,
+                timings=timings,
             )
             index += 1
 
@@ -509,6 +541,7 @@ class Conversation:
         seq: int,
         *,
         over: bool,
+        backup_over: bool = False,
         timings: Timings | None = None,
         speaking_rate: float = 1.0,
     ) -> int:
@@ -527,6 +560,7 @@ class Conversation:
                     speaking_rate,
                     record=self._record_tts,
                     over_allowance=over,
+                    backup_over_allowance=backup_over,
                 ):
                     if timings is not None and timings.first_audio_ms is None:
                         timings.first_audio_ms = _ms(timings.started)
@@ -574,6 +608,8 @@ class Conversation:
             user_facts=self.learner.user_facts,
             summary=self.memory.summary,
             recast=audio is not None,
+            correct=self.learner.correct_in_chat,
+            explain_lang=self.learner.ui_lang,
         )
         history: list[tuple[str, str]] = []
         for turn in self.memory.context_turns():
@@ -627,7 +663,14 @@ class Conversation:
             await self._error("bad_request")
             return
         snap = await self._snapshot()
-        await self._speak_sentence(f"word:{word}", 0, word, 0, over=snap.tts_over_allowance)
+        await self._speak_sentence(
+            f"word:{word}",
+            0,
+            word,
+            0,
+            over=snap.tts_over_allowance,
+            backup_over=snap.backup_over_allowance,
+        )
 
     def pron_retry(self, audio: bytes, mime: str, word: str, message_id: str) -> None:
         """🎙 in the panel: judge one new attempt at one word."""
@@ -765,9 +808,10 @@ class Conversation:
             )
 
     async def _record_stt(self, model: str, usage: LlmUsage, seconds: float) -> None:
+        role = "stt" if model == self.settings.gemini_stt_model else "utility"
         async with session_factory()() as db:
             await usage_svc.record_stt(
-                db, user_id=self.learner.id, model=model, usage=usage, seconds=seconds
+                db, user_id=self.learner.id, model=model, usage=usage, seconds=seconds, role=role
             )
 
     async def _record_tts(self, provider: str, model: str, chars: int) -> None:
