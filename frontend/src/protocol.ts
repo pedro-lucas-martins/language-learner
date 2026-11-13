@@ -107,7 +107,15 @@ export type ServerMsg =
       budget_usd: number;
       tts_chars_month: number;
       tts_chars_allowance: number;
+      /** The provider that will actually speak (active, backup or a fallback). */
       tts_provider_active: string;
+      /** Today vs the daily caps (0 = no cap). */
+      llm_calls_today: number;
+      llm_calls_cap: number;
+      stt_seconds_today: number;
+      stt_seconds_cap: number;
+      tts_chars_today: number;
+      tts_chars_cap: number;
     }
   | {
       type: "feedback";

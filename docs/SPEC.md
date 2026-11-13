@@ -227,7 +227,7 @@ Server → client:
 | `topic` | `message_id`, `text` — an AI message with no LLM call; its audio follows as usual (`audio_meta` + binary or `tts_fallback`) |
 | `interrupted` | `message_id` |
 | `metrics` | `message_id`, `stt_ms` (null for typed turns), `llm_first_token_ms`, `first_audio_ms` (null if no server audio), `total_ms` — measured from `end_of_speech` / `user_text` (§6) |
-| `usage` | `month_usd_est`, `budget_usd`, `tts_chars_month`, `tts_chars_allowance`, `tts_provider_active` |
+| `usage` | `month_usd_est`, `budget_usd`, `tts_chars_month`, `tts_chars_allowance`, `tts_provider_active` (the provider that will actually speak), `llm_calls_today`, `llm_calls_cap`, `stt_seconds_today`, `stt_seconds_cap`, `tts_chars_today`, `tts_chars_cap` (caps: 0 = no cap) |
 | `error` | `code` (`quota_exceeded`, `provider_unavailable`, `stt_failed`, `bad_request`), `message` (in native_lang) |
 
 Define these as Pydantic models (backend) and TypeScript types (frontend) generated or mirrored in `frontend/src/protocol.ts`.

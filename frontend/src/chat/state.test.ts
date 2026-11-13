@@ -88,10 +88,28 @@ describe("chatReducer", () => {
         tts_chars_month: 0,
         tts_chars_allowance: 1_000_000,
         tts_provider_active: "google",
+        llm_calls_today: 12,
+        llm_calls_cap: 1200,
+        stt_seconds_today: 30.5,
+        stt_seconds_cap: 3600,
+        tts_chars_today: 900,
+        tts_chars_cap: 45000,
       },
     );
     expect(s.user?.level).toBe("B2");
-    expect(s.usage).toEqual({ monthUsdEst: 1.5, budgetUsd: 15, ttsProvider: "google" });
+    expect(s.usage).toEqual({
+      monthUsdEst: 1.5,
+      budgetUsd: 15,
+      ttsProvider: "google",
+      ttsCharsMonth: 0,
+      ttsCharsAllowance: 1_000_000,
+      llmCallsToday: 12,
+      llmCallsCap: 1200,
+      sttSecondsToday: 30.5,
+      sttSecondsCap: 3600,
+      ttsCharsToday: 900,
+      ttsCharsCap: 45000,
+    });
   });
 
   it("stores the last turn's metrics", () => {

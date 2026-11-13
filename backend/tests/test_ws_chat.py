@@ -260,3 +260,18 @@ def test_missing_models_report_not_configured(sync_engine: Engine, fake_llm: Fak
         app.state.settings = original
     assert events[-1]["code"] == "provider_unavailable"
     assert "não foi configurada" in events[-1]["message"]
+
+
+def test_usage_reports_today_vs_daily_caps(client: TestClient, sync_engine: Engine) -> None:
+    token = add_user(sync_engine)
+    with _connect(client) as ws:
+        ws.send_json({"type": "auth", "token": token})
+        ws.receive_json()
+        first = ws.receive_json()
+        events = _say(ws, "Cześć, jak się masz?")
+    assert first["type"] == "usage" and first["llm_calls_today"] == 0
+    assert first["llm_calls_cap"] == 400 and first["tts_chars_cap"] == 8000
+    after = events[-1]
+    assert after["llm_calls_today"] >= 1  # the chat call
+    assert after["tts_chars_today"] > 0  # the reply was spoken (fake TTS, priced provider)
+    assert after["tts_provider_active"] == "google"

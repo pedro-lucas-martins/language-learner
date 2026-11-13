@@ -5,7 +5,7 @@ import { ownKey } from "../chat/ownRecordings.ts";
 import type { Metrics } from "../chat/state.ts";
 import { useChatSocket, type AudioHandler } from "../chat/useChatSocket.ts";
 import { useVoice } from "../chat/useVoice.ts";
-import { t } from "../i18n.ts";
+import { t, type StringKey } from "../i18n.ts";
 import { MAX_USER_TEXT, type Lang } from "../protocol.ts";
 import { useTheme } from "../theme.ts";
 import { listDueCards } from "../api.ts";
@@ -25,6 +25,7 @@ import {
 import { ProfilePage } from "./ProfilePage.tsx";
 import { SideNav, type View } from "./SideNav.tsx";
 import { ThemeBar } from "./ThemeBar.tsx";
+import { UsagePage } from "./UsagePage.tsx";
 import { MicButton } from "./MicButton.tsx";
 import type { Practice } from "./practice.ts";
 import { SettingsMenu } from "./SettingsMenu.tsx";
@@ -49,6 +50,13 @@ function metricsText(lang: Lang, m: Metrics): string {
   parts.push(`${t(lang, "metricsTotal")} ${seconds(m.totalMs)}`);
   return `${t(lang, "metricsLabel")}: ${parts.join(" · ")}`;
 }
+
+const VIEW_TITLE = {
+  chat: "navChat",
+  flashcards: "navFlashcards",
+  profile: "navProfile",
+  usage: "navUsage",
+} as const satisfies Record<View, StringKey>;
 
 const WIDE_QUERY = "(min-width: 1024px)";
 
@@ -248,7 +256,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
           </button>
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-[15px] font-semibold tracking-tight">
-              {t(lang, view === "chat" ? "navChat" : view === "flashcards" ? "navFlashcards" : "navProfile")}
+              {t(lang, VIEW_TITLE[view])}
             </h1>
             {state.user && (
               <p className="muted truncate text-xs">
@@ -294,6 +302,14 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
               {t(lang, "reconnect")}
             </button>
           </div>
+        )}
+
+        {view === "usage" && (
+          <section className="flex-1 overflow-y-auto px-4 py-6 sm:px-6" aria-label={t(lang, "navUsage")}>
+            <div className="mx-auto max-w-xl">
+              <UsagePage lang={lang} usage={state.usage} metrics={state.metrics} />
+            </div>
+          </section>
         )}
 
         {view === "profile" && (

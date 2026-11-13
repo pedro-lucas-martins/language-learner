@@ -32,6 +32,14 @@ export interface Usage {
   monthUsdEst: number;
   budgetUsd: number;
   ttsProvider: string;
+  ttsCharsMonth: number;
+  ttsCharsAllowance: number;
+  llmCallsToday: number;
+  llmCallsCap: number;
+  sttSecondsToday: number;
+  sttSecondsCap: number;
+  ttsCharsToday: number;
+  ttsCharsCap: number;
 }
 
 /** Last turn's timings in ms (SPEC §6), shown as measured values, never as targets. */
@@ -203,6 +211,14 @@ function applyServerMsg(state: ChatState, msg: ServerMsg): ChatState {
           monthUsdEst: msg.month_usd_est,
           budgetUsd: msg.budget_usd,
           ttsProvider: msg.tts_provider_active,
+          ttsCharsMonth: msg.tts_chars_month,
+          ttsCharsAllowance: msg.tts_chars_allowance,
+          llmCallsToday: msg.llm_calls_today ?? 0,
+          llmCallsCap: msg.llm_calls_cap ?? 0,
+          sttSecondsToday: msg.stt_seconds_today ?? 0,
+          sttSecondsCap: msg.stt_seconds_cap ?? 0,
+          ttsCharsToday: msg.tts_chars_today ?? 0,
+          ttsCharsCap: msg.tts_chars_cap ?? 0,
         },
       };
 

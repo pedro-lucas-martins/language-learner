@@ -172,6 +172,13 @@ class UsageMsg(BaseModel):
     tts_chars_month: int
     tts_chars_allowance: int
     tts_provider_active: str
+    # Today's usage vs the daily caps (0 = no cap), for the usage page (SPEC §9).
+    llm_calls_today: int = 0
+    llm_calls_cap: int = 0
+    stt_seconds_today: float = 0.0
+    stt_seconds_cap: int = 0
+    tts_chars_today: int = 0
+    tts_chars_cap: int = 0
 
 
 class AudioMetaMsg(BaseModel):

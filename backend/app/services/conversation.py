@@ -250,6 +250,12 @@ class Conversation:
                 tts_chars_month=snap.tts_chars_month,
                 tts_chars_allowance=snap.tts_chars_allowance,
                 tts_provider_active=self._tts_provider_active(snap),
+                llm_calls_today=snap.llm_calls_today,
+                llm_calls_cap=snap.llm_calls_cap,
+                stt_seconds_today=round(snap.stt_seconds_today, 1),
+                stt_seconds_cap=snap.stt_seconds_cap,
+                tts_chars_today=snap.tts_chars_today,
+                tts_chars_cap=snap.tts_chars_cap,
             )
         )
         return snap

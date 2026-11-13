@@ -154,6 +154,7 @@ The spend estimate multiplies summed usage by the `PRICE_*` settings.
 | `src/chat/corrections.ts` | Pure helpers: corrections list (newest first), «marked» card fronts |
 | `src/components/SideNav.tsx` | Side menu: Conversation / Flashcards (due-cards badge) / About you (column ≥ 1024 px, drawer below) |
 | `src/components/ThemeBar.tsx` | Steering-theme chip and inline editor above the input |
+| `src/components/UsagePage.tsx` | Usage page: month spend × budget, voice quota, today × caps, last timings |
 | `src/components/ProfilePage.tsx` | "About you": edit the remembered facts (100-word counter) |
 | `src/components/FeedbackPanel.tsx` | Corrections of this conversation (side column ≥ 1024 px, sheet below) |
 | `src/components/CorrectionItem.tsx` | One message's grammar and pronunciation feedback |

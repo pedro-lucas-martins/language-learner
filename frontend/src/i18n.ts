@@ -97,6 +97,20 @@ const ptBR = {
   factsTitle: "O que a IA lembra sobre você",
   factsHelp: "A IA atualiza isto sozinha no fim de cada conversa, para lembrar de você na próxima. Você pode corrigir ou apagar o que quiser.",
   factsEmpty: "Ainda não há nada. Converse um pouco e volte aqui.",
+  navUsage: "Uso",
+  usageEstimate: "Valores estimados a partir dos preços configurados — não é uma fatura.",
+  usageThisMonth: "Este mês",
+  usageSpend: "Gasto estimado (Gemini) × teto",
+  usageVoiceChars: "Caracteres de voz",
+  usageVoiceNow: "Voz em uso agora",
+  usageToday: "Hoje × limites diários",
+  usageCalls: "Chamadas à IA",
+  usageAudioSeconds: "Segundos de áudio enviados",
+  usageNoTimings: "Converse um pouco para ver os tempos.",
+  metricsFirstToken: "1º texto da IA",
+  voiceEdge: "Voz reserva gratuita",
+  usageVoicePlan: "Caracteres da voz principal × cota do mês",
+  voiceBrowser: "Voz do navegador",
 } as const;
 
 type Strings = { [K in keyof typeof ptBR]: string };
@@ -194,6 +208,20 @@ const plPL: Strings = {
   factsTitle: "Co AI o tobie pamięta",
   factsHelp: "AI uzupełnia to sama na koniec każdej rozmowy, żeby pamiętać cię następnym razem. Możesz poprawić lub usunąć, co chcesz.",
   factsEmpty: "Na razie nic tu nie ma. Porozmawiaj chwilę i wróć tutaj.",
+  navUsage: "Zużycie",
+  usageEstimate: "Wartości szacunkowe na podstawie skonfigurowanych cen — to nie jest rachunek.",
+  usageThisMonth: "Ten miesiąc",
+  usageSpend: "Szacowany koszt (Gemini) × limit",
+  usageVoiceChars: "Znaki głosu",
+  usageVoiceNow: "Głos używany teraz",
+  usageToday: "Dzisiaj × limity dzienne",
+  usageCalls: "Wywołania AI",
+  usageAudioSeconds: "Wysłane sekundy nagrań",
+  usageNoTimings: "Porozmawiaj chwilę, żeby zobaczyć czasy.",
+  metricsFirstToken: "pierwszy tekst AI",
+  voiceEdge: "Darmowy głos zapasowy",
+  usageVoicePlan: "Znaki głównego głosu × limit miesięczny",
+  voiceBrowser: "Głos przeglądarki",
 };
 
 export type StringKey = keyof typeof ptBR;
