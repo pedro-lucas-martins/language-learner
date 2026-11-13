@@ -166,6 +166,20 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Decision:** a side menu with **Conversation** and **Flashcards** (fixed column from 1024 px, drawer behind ☰ on phones; Escape closes it). Flashcards get their own page in the main area, with a badge of cards due (`GET /flashcards?due=true`, refreshed on start, on page change, after new corrections and after each review; "50+" at the list limit). The right panel now shows only the corrections. The conversation stays mounted while the Flashcards page is open, so drafts, scroll and audio are kept.
 - **Consequence:** one more REST call per page change/correction (free, local). SPEC §9 still describes Corrections/Flashcards tabs; the slice 5 responsive shell should follow this layout instead.
 
+## 025 — Main learner: a Polish speaker learning Portuguese; real-time STT rejected (2026-11-13)
+- **Context:** the transcription still felt slow. Real-time (streaming) transcription was measured, and the author then decided the app is for a Polish speaker learning Portuguese.
+- **Real-time STT measured** (clips streamed at real speed, delay = end of speech → last transcript piece):
+
+  | Direction (synthetic accent) | Today (`gemini-3.8-flash` LOW, after the utterance) | `gemini-3.8-live` | `gemini-3.5-transcribe-live` |
+  |---|---|---|---|
+  | Polish with a Brazilian accent | 5–13% WER, ~1.6–2.4 s | 74% WER, 0.3 s | 67% WER, 0.3 s |
+  | Portuguese with a Polish accent | 2–12% WER, ~2.2–2.5 s | 17% WER, 0.3 s | 27% WER, 0.3 s |
+
+  Streaming is fast but either misrecognises accented speech or **normalises the learner's mistakes** ("Eu gosta muito de a praia" → "Eu gosto muito da praia"), which defeats the corrections. `gemini-3.8-live` only accepts AUDIO responses. Rejected for now; re-test with real recordings of the learner's voice.
+- **STT for Portuguese** (Polish accent, 2 rounds): 3.8-flash LOW 10–12% / 2.2 s; **3.1-flash-lite 14% / 1.2 s**; 3.5-flash-lite LOW 24% (fixes mistakes) / 1.1 s. **Decision:** `GEMINI_STT_MODEL=gemini-3.1-flash-lite`, no thinking level — ~1 s faster, ~US$ 1/month, no January price increase. Real check: STT 1.2–1.7 s, first audio 3.0–4.2 s.
+- **Learner:** new user "Aluno" (pl-PL → pt-BR, A2; UI and explanations in Polish). Testing and new content (e.g. slice 4 topics) focus on PL→PT first; the PT→PL direction stays in the code (the bidirectional rule is unchanged).
+- **Consequence:** Brazilian testers speaking Polish get a weaker transcription with this model (it measured 18% on accented Polish).
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |
@@ -181,7 +195,7 @@ Short records: context → decision → consequence. Newest at the bottom.
 |---|---|---|---|
 | `GEMINI_CHAT_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (text/audio) / 2.50 out per 1M | 2026-11-12 |
 | `GEMINI_UTILITY_MODEL` | `gemini-3.1-flash-lite` | US$ 0.25 in (0.50 audio) / 1.50 out per 1M | 2026-11-12 |
-| `GEMINI_STT_MODEL` | `gemini-3.5-flash-lite` (thinking LOW), see 021 | US$ 0.30 in / 2.50 out per 1M | 2026-11-12 |
+| `GEMINI_STT_MODEL` | `gemini-3.1-flash-lite` (no thinking), see 025 | US$ 0.50 in (audio) / 1.50 out per 1M | 2026-11-13 |
 | `GEMINI_FEEDBACK_MODEL` | `gemini-3.5-flash-lite` | US$ 0.30 in (text/audio) / 2.50 out per 1M | 2026-11-12 |
 | `TTS_PROVIDER` (after benchmark) | `elevenlabs` (was `google`, see 020) | Free plan, 10,000 chars/month | 2026-11-12 |
 | TTS model / plan | Chirp 3 HD, voices Kore (F) and Charon (M), OGG_OPUS | free tier (`TTS_MONTHLY_CHARS=1000000`, `PRICE_TTS_PER_1K_CHARS=0`) | 2026-11-12 |

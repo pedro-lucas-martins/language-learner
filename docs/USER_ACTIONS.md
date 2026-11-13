@@ -118,6 +118,15 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
 - [ ] Para voltar ao Google (grátis até 1M caracteres/mês): `TTS_PROVIDER=google` e `TTS_MONTHLY_CHARS=1000000`,
       depois `docker compose up -d backend`.
 
+## Aluno principal: polonês aprendendo português
+
+- [ ] Entregar à pessoa o token do usuário **Aluno** (em `~/language-learner-token-aluno.txt`; depois apague o
+      arquivo). A interface e as explicações aparecem em polonês; o nível (A2) muda no menu ⚙.
+- [ ] Pedir a um falante nativo de polonês para revisar os textos da interface (`frontend/src/i18n.ts`, bloco `plPL`):
+      foram escritos por IA.
+- [ ] Se possível, gravar 5–10 frases reais da pessoa falando português (com erros) em `backend/scripts/stt_clips/`
+      para medir a transcrição com a voz dela (`python -m scripts.stt_eval`).
+
 ## Plano de ~R$ 75/mês (ElevenLabs Starter + transcrição 3.8)
 
 - [ ] Assinar o **ElevenLabs Starter** (US$ 6/mês; 1º mês US$ 1). Se houver cobrança por excedente, deixe **desligada**.
