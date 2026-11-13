@@ -10,6 +10,7 @@ import {
   type Level,
   type ServerMsg,
 } from "../protocol.ts";
+import { OwnRecordings } from "./ownRecordings.ts";
 import { chatReducer, initialChatState } from "./state.ts";
 
 /** Audio-related frames, handed to the voice layer (player) as they arrive. */
@@ -18,6 +19,8 @@ export type AudioEvent =
   | { kind: "binary"; data: ArrayBuffer }
   | { kind: "fallback"; msg: Extract<ServerMsg, { type: "tts_fallback" }> }
   | { kind: "interrupted"; messageId: string }
+  /** The learner's own recording, now linked to its transcript message. */
+  | { kind: "own"; messageId: string; blob: Blob }
   | { kind: "reset" };
 
 export type AudioHandler = (event: AudioEvent) => void;
@@ -30,6 +33,7 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
   const [state, dispatch] = useReducer(chatReducer, initialChatState);
   const [attempt, setAttempt] = useState(0);
   const socketRef = useRef<WebSocket | null>(null);
+  const own = useRef(new OwnRecordings());
 
   useEffect(() => {
     let active = true; // ignore events from a socket this effect already discarded
@@ -38,6 +42,7 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
     socket.binaryType = "arraybuffer";
     socketRef.current = socket;
     audioRef?.current?.({ kind: "reset" });
+    own.current.clear();
 
     socket.onopen = () => {
       if (!active) return;
@@ -54,6 +59,12 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
       if (typeof event.data !== "string") return;
       const msg = parseServerMsg(event.data);
       if (!msg) return;
+      if (msg.type === "transcript") {
+        const recording = own.current.transcript();
+        if (recording) audio?.({ kind: "own", messageId: msg.message_id, blob: recording });
+      } else if (msg.type === "error") {
+        own.current.clear();
+      }
       if (msg.type === "audio_meta") audio?.({ kind: "meta", meta: msg });
       else if (msg.type === "tts_fallback") audio?.({ kind: "fallback", msg });
       else if (msg.type === "interrupted") audio?.({ kind: "interrupted", messageId: msg.message_id });
@@ -83,7 +94,10 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
       const trimmed = text.trim().slice(0, MAX_USER_TEXT);
       if (!trimmed) return false;
       const ok = send({ type: "user_text", text: trimmed });
-      if (ok) dispatch({ type: "sent" });
+      if (ok) {
+        own.current.clear();
+        dispatch({ type: "sent" });
+      }
       return ok;
     },
     [send],
@@ -99,6 +113,7 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
       if (!send({ type: "start_of_speech", mime, purpose: "utterance" })) return false;
       socket.send(data);
       send({ type: "end_of_speech" });
+      own.current.sent(blob);
       dispatch({ type: "sent", voice: true });
       return true;
     },
@@ -140,6 +155,11 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
     [send],
   );
 
+  const setCorrection = useCallback(
+    (enabled: boolean) => send({ type: "set_correction", enabled }),
+    [send],
+  );
+
   const setRecast = useCallback(
     (enabled: boolean) => send({ type: "set_recast", enabled }),
     [send],
@@ -160,6 +180,7 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
     interrupt,
     regrade,
     setRecast,
+    setCorrection,
     speakWord,
     setUiLang,
     correctionsSeen,

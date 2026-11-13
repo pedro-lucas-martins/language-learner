@@ -77,6 +77,9 @@ const ptBR = {
   themeLight: "Claro",
   themeDark: "Escuro",
   direction: "Você aprende",
+  playMine: "Ouvir minha gravação",
+  correction: "Correção na conversa",
+  correctionHint: "A IA corrige um erro por resposta, sem parar o papo",
 } as const;
 
 type Strings = { [K in keyof typeof ptBR]: string };
@@ -154,6 +157,9 @@ const plPL: Strings = {
   themeLight: "Jasny",
   themeDark: "Ciemny",
   direction: "Uczysz się",
+  playMine: "Odsłuchaj moje nagranie",
+  correction: "Poprawki w rozmowie",
+  correctionHint: "AI poprawia jeden błąd w odpowiedzi, nie przerywając rozmowy",
 };
 
 export type StringKey = keyof typeof ptBR;

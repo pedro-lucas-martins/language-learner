@@ -12,6 +12,7 @@ import { SentenceAssembler } from "../audio/assembler.ts";
 import { AudioPlayer } from "../audio/player.ts";
 import { MIC_CONSTRAINTS, micSupported, UtteranceRecorder } from "../audio/recorder.ts";
 import { MicMonitor } from "../audio/vad.ts";
+import { ownKey } from "./ownRecordings.ts";
 import type { AudioHandler } from "./useChatSocket.ts";
 
 /** A press shorter than this is a tap (toggle hands-free), longer is push-to-talk. */
@@ -90,6 +91,10 @@ export function useVoice({ audioRef, busy, lastAiMessageId, sendUtterance, inter
             text: event.msg.text,
             lang: event.msg.lang,
           });
+          setAudioVersion((n) => n + 1);
+          break;
+        case "own":
+          player.addClip(ownKey(event.messageId), event.blob);
           setAudioVersion((n) => n + 1);
           break;
         case "interrupted":

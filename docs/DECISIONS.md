@@ -156,6 +156,11 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Measured (2026-11-13):** first voice turn right after a restart: first audio 4.2 s (was ~10 s cold), STT 2.8 s (was 4.7 s). Corrections: a correct sentence was left alone; "Ja mam dwa kot" → "Mówimy: dwa koty." + a Portuguese reason (slightly imprecise: says genitive); B1: "A gente diz «eu fui ao cinema»." Before the "already right" rule, one reply "corrected" a correct form after the STT had itself fixed the learner's mistake.
 - **Consequence:** in-conversation corrections depend on the transcript — when the STT silently fixes a mistake, the AI cannot correct it (hearing your own recording, 4b, makes this visible). Flash-Lite explanations can be slightly wrong.
 
+## 023 — Hear your own recording (2026-11-13)
+- **Context:** LLM-based STT can silently fix a learner's mistake, and then neither the panel nor the in-conversation correction can catch it. The author asked for transparency.
+- **Decision:** the browser keeps each sent utterance and links it to the next `transcript` (`OwnRecordings`, in order; cleared on a typed message, an error or a reconnect). A ▶ next to the learner's message replays it from memory (`own:<id>` in the player library, last 40 kept). No upload, no cost. The ⚙ menu also gets the "correction in the conversation" switch.
+- **Consequence:** the learner can compare what they said with what was transcribed and fix the transcript (regrade). Recordings are lost on page reload.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |

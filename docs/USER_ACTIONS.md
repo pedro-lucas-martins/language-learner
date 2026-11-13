@@ -122,6 +122,8 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
 
 - [ ] Assinar o **ElevenLabs Starter** (US$ 6/mês; 1º mês US$ 1). Se houver cobrança por excedente, deixe **desligada**.
 - [ ] Depois de assinar, me avise: eu ajusto `TTS_MONTHLY_CHARS=150000` e testo as **vozes nativas** (Magdalena/Kamil, Raquel/Paulo).
+- [ ] Depois de falar, toque no ▶ ao lado da sua mensagem para **ouvir sua gravação** e comparar com a transcrição.
+      O interruptor **Correção na conversa** fica no menu ⚙.
 - [ ] Quando os 150 mil caracteres do mês acabarem, a voz do **Google** assume sozinha (grátis até 1 milhão/mês).
 - [ ] O teto do Gemini está em `MONTHLY_BUDGET_USD=7` (R$ 75 − assinatura). Ao atingir, conversa, correções e transcrição
       passam para o modelo mais barato até o mês virar.

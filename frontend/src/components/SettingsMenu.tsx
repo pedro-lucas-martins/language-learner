@@ -14,6 +14,7 @@ interface Props {
   onLevel: (level: Level) => void;
   onUiLang: (lang: Lang) => void;
   onRecast: (enabled: boolean) => void;
+  onCorrection: (enabled: boolean) => void;
   onLogout: () => void;
 }
 
@@ -97,6 +98,20 @@ export function SettingsMenu(props: Props) {
               ))}
             </div>
           </div>
+          <label className={row} title={t(lang, "correctionHint")}>
+            <span>
+              {t(lang, "correction")}
+              <span className="muted block text-xs">{t(lang, "correctionHint")}</span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              disabled={disabled}
+              checked={user?.correct_in_chat ?? true}
+              onChange={(e) => props.onCorrection(e.target.checked)}
+              className="size-5 shrink-0 accent-accent-600"
+            />
+          </label>
           <label className={row} title={t(lang, "recastHint")}>
             <span>
               {t(lang, "recast")}

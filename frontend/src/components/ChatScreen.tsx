@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 import { correctionEntries } from "../chat/corrections.ts";
+import { ownKey } from "../chat/ownRecordings.ts";
 import type { Metrics } from "../chat/state.ts";
 import { useChatSocket, type AudioHandler } from "../chat/useChatSocket.ts";
 import { useVoice } from "../chat/useVoice.ts";
@@ -62,6 +63,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
     interrupt,
     regrade,
     setRecast,
+    setCorrection,
     speakWord,
     setUiLang,
     correctionsSeen,
@@ -207,6 +209,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
             onLevel={setLevel}
             onUiLang={setUiLang}
             onRecast={setRecast}
+            onCorrection={setCorrection}
             onLogout={onLogout}
           />
         </header>
@@ -255,22 +258,35 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
                   </div>
                 </form>
               ) : message.role === "user" ? (
-                <button
-                  type="button"
-                  lang={state.user?.target_lang}
-                  title={t(lang, "editTranscript")}
-                  onClick={() => setEditing({ id: message.id, text: message.text })}
-                  className="bubble-user group transition-colors hover:bg-accent-700"
-                >
-                  {message.text}
-                  <span aria-hidden className="ml-2 inline-flex translate-y-0.5 opacity-60 group-hover:opacity-100">
-                    {state.feedback[message.id]?.ok ? (
-                      <CheckIcon className="size-3.5" />
-                    ) : (
-                      <PencilIcon className="size-3.5" />
-                    )}
-                  </span>
-                </button>
+                <div className="flex max-w-[85%] items-end justify-end gap-1">
+                  {voice.hasAudio(ownKey(message.id)) && (
+                    <button
+                      type="button"
+                      onClick={() => voice.replay(ownKey(message.id))}
+                      aria-label={t(lang, "playMine")}
+                      title={t(lang, "playMine")}
+                      className="icon-btn size-9 shrink-0"
+                    >
+                      <PlayIcon className="size-4" />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    lang={state.user?.target_lang}
+                    title={t(lang, "editTranscript")}
+                    onClick={() => setEditing({ id: message.id, text: message.text })}
+                    className="bubble-user group max-w-full transition-colors hover:bg-accent-700"
+                  >
+                    {message.text}
+                    <span aria-hidden className="ml-2 inline-flex translate-y-0.5 opacity-60 group-hover:opacity-100">
+                      {state.feedback[message.id]?.ok ? (
+                        <CheckIcon className="size-3.5" />
+                      ) : (
+                        <PencilIcon className="size-3.5" />
+                      )}
+                    </span>
+                  </button>
+                </div>
               ) : (
                 <div lang={state.user?.target_lang} className="bubble-ai">
                   {message.text}

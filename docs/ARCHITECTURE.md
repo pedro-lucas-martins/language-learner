@@ -138,6 +138,7 @@ The spend estimate multiplies summed usage by the `PRICE_*` settings.
 | `src/audio/assembler.ts` | Joins `audio_meta` + binary frames into complete sentences |
 | `src/audio/player.ts` | Sentence queue on one `<audio>`, autoplay unlock, replay 1×/0.8×, speechSynthesis fallback |
 | `src/api.ts` | REST client: due flashcards, review (grade names → SM-2), delete |
+| `src/chat/ownRecordings.ts` | Links each sent recording to its transcript (▶ "hear my recording") |
 | `src/chat/corrections.ts` | Pure helpers: corrections list (newest first), «marked» card fronts |
 | `src/components/FeedbackPanel.tsx` | Tabs Corrections / Flashcards (side column ≥ 1024 px, sheet below) |
 | `src/components/CorrectionItem.tsx` | One message's grammar and pronunciation feedback |

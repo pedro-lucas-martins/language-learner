@@ -66,6 +66,12 @@ export class AudioPlayer {
     void this.el.play().catch(() => undefined).finally(() => URL.revokeObjectURL(url));
   }
 
+  /** Keep a ready-made clip (e.g. the learner's own recording) for replay under `key`. */
+  addClip(key: string, blob: Blob): void {
+    this.library.delete(key);
+    this.keep({ kind: "audio", messageId: key, sentence: 0, blob });
+  }
+
   has(messageId: string): boolean {
     return this.library.has(messageId);
   }
