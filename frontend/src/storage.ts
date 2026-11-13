@@ -25,3 +25,22 @@ export function clearToken(): void {
     // ignore
   }
 }
+
+const LISTEN_KEY = "ll.listenMode";
+
+/** Listening mode (AI text blurred until tapped) is a per-browser preference. */
+export function loadListenMode(): boolean {
+  try {
+    return window.localStorage.getItem(LISTEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function saveListenMode(on: boolean): void {
+  try {
+    window.localStorage.setItem(LISTEN_KEY, on ? "1" : "0");
+  } catch {
+    // Not persisted: the default (off) comes back next time.
+  }
+}

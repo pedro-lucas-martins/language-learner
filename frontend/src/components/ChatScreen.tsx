@@ -7,6 +7,7 @@ import { useChatSocket, type AudioHandler } from "../chat/useChatSocket.ts";
 import { useVoice } from "../chat/useVoice.ts";
 import { t, type StringKey } from "../i18n.ts";
 import { MAX_USER_TEXT, type Lang } from "../protocol.ts";
+import { loadListenMode, saveListenMode } from "../storage.ts";
 import { useTheme } from "../theme.ts";
 import { listDueCards } from "../api.ts";
 import { FeedbackPanel } from "./FeedbackPanel.tsx";
@@ -58,9 +59,10 @@ const VIEW_TITLE = {
   usage: "navUsage",
 } as const satisfies Record<View, StringKey>;
 
-const WIDE_QUERY = "(min-width: 1024px)";
+// From tablet width (768 px) the corrections column is always visible (SPEC §9: 60/40 split).
+const WIDE_QUERY = "(min-width: 768px)";
 
-/** True on desktop widths, where the corrections panel is always visible. */
+/** True from tablet width up, where the corrections panel is always visible. */
 function useIsWide(): boolean {
   const [wide, setWide] = useState(() =>
     typeof window !== "undefined" && window.matchMedia ? window.matchMedia(WIDE_QUERY).matches : false,
@@ -113,6 +115,14 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
   const [view, setView] = useState<View>("chat");
   const [dueCount, setDueCount] = useState<number | null>(null);
   const [topicTheme, setTopicTheme] = useState("");
+  const [listenMode, setListenMode] = useState(loadListenMode);
+  const [revealed, setRevealed] = useState<ReadonlySet<string>>(new Set());
+
+  function changeListenMode(on: boolean) {
+    setListenMode(on);
+    setRevealed(new Set());
+    saveListenMode(on);
+  }
   const isWide = useIsWide();
 
   // Cards due now, for the menu badge: on start, when switching pages and when a new
@@ -269,7 +279,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
             onClick={() => setSheetOpen(true)}
             aria-label={t(lang, "openCorrections")}
             title={t(lang, "openCorrections")}
-            className="icon-btn relative lg:hidden"
+            className="icon-btn relative md:hidden"
           >
             <NotesIcon />
             {state.unseenCorrections > 0 && (
@@ -288,6 +298,8 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
             onUiLang={setUiLang}
             onRecast={setRecast}
             onCorrection={setCorrection}
+            listenMode={listenMode}
+            onListenMode={changeListenMode}
             onLogout={onLogout}
           />
         </header>
@@ -369,7 +381,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
                         onClick={() => voice.replay(ownKey(message.id))}
                         aria-label={t(lang, "playMine")}
                         title={t(lang, "playMine")}
-                        className="icon-btn size-9 shrink-0"
+                        className="icon-btn size-11 shrink-0 md:size-9"
                       >
                         <PlayIcon className="size-4" />
                       </button>
@@ -393,7 +405,22 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
                   </div>
                 ) : (
                   <div lang={state.user?.target_lang} className="bubble-ai">
-                    {message.text}
+                    {listenMode && !revealed.has(message.id) ? (
+                      <button
+                        type="button"
+                        onClick={() => setRevealed((prev) => new Set(prev).add(message.id))}
+                        aria-label={t(lang, "tapToReveal")}
+                        title={t(lang, "tapToReveal")}
+                        className="block text-left"
+                      >
+                        <span aria-hidden className="select-none blur-[5px]">
+                          {message.text}
+                        </span>
+                        <span className="muted mt-1 block text-xs">{t(lang, "tapToReveal")}</span>
+                      </button>
+                    ) : (
+                      message.text
+                    )}
                     {message.streaming && <span className="ml-0.5 animate-pulse text-accent-500">▍</span>}
                     {!message.streaming && voice.hasAudio(message.id) && (
                       <div className="-mb-1 -ml-2 mt-1 flex items-center gap-0.5">
@@ -402,7 +429,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
                           onClick={() => voice.replay(message.id)}
                           aria-label={t(lang, "replay")}
                           title={t(lang, "replay")}
-                          className="icon-btn size-9"
+                          className="icon-btn size-11 md:size-9"
                         >
                           <PlayIcon className="size-4" />
                         </button>
@@ -411,7 +438,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
                           onClick={() => voice.replay(message.id, 0.8)}
                           aria-label={t(lang, "replaySlow")}
                           title={t(lang, "replaySlow")}
-                          className="icon-btn size-9 text-xs font-semibold"
+                          className="icon-btn size-11 text-xs font-semibold md:size-9"
                         >
                           0.8×
                         </button>
@@ -519,7 +546,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
         )}
       </main>
 
-      <aside className="hairline surface hidden h-full w-96 shrink-0 border-l lg:block">
+      <aside className="hairline surface hidden h-full shrink-0 border-l md:block md:w-2/5 lg:w-96">
         <FeedbackPanel entries={entries} practice={practice} />
       </aside>
 

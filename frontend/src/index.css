@@ -23,6 +23,12 @@ body {
   @apply bg-zinc-50 font-sans text-zinc-800 antialiased dark:bg-zinc-950 dark:text-zinc-100;
 }
 
+/* Keyboard focus is always visible; mouse/touch clicks do not show the ring. */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid oklch(58% 0.17 270); /* = accent-500 (theme vars are only emitted when used) */
+  outline-offset: 2px;
+}
+
 /* Reusable building blocks (Tailwind v4 utilities, so they can be composed with @apply). */
 @utility surface {
   @apply bg-white dark:bg-zinc-900;

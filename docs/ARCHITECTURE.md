@@ -2,7 +2,7 @@
 
 Describes what exists **now**. Target design lives in [`SPEC.md`](SPEC.md).
 
-_Last updated: after slice 3 — corrections in the conversation, backup TTS provider, budget covering STT, warm-up._
+_Last updated: slice 5 — responsive shell (phone / tablet / desktop), usage page, listening mode, PWA manifest._
 
 ## Overview
 
@@ -162,6 +162,8 @@ The spend estimate multiplies summed usage by the `PRICE_*` settings.
 | `src/components/FlashcardReview.tsx` | Review due cards (Flashcards page): flip, grade, delete, reports the count |
 | `src/index.css` | Theme tokens (`@theme`), building blocks (`@utility`), thinking-dots animation |
 | `src/theme.ts` | Light (default) / dark theme, remembered per browser |
+| `src/storage.ts` | Token and listening-mode preference in `localStorage` (every access in try/catch) |
+| `public/manifest.webmanifest` | PWA manifest + icons (`icon.svg`, `icon-192/512.png`, maskable, apple-touch) |
 | `src/components/SettingsMenu.tsx` | ⚙ menu: level, interface language, pronunciation echo, theme, logout |
 | `src/components/ThinkingBubble.tsx` | "Transcribing…" / "Thinking…" indicator |
 | `src/components/icons.tsx` | Inline line icons |

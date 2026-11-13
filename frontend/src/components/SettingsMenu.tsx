@@ -15,6 +15,8 @@ interface Props {
   onUiLang: (lang: Lang) => void;
   onRecast: (enabled: boolean) => void;
   onCorrection: (enabled: boolean) => void;
+  listenMode: boolean;
+  onListenMode: (on: boolean) => void;
   onLogout: () => void;
 }
 
@@ -109,6 +111,19 @@ export function SettingsMenu(props: Props) {
               disabled={disabled}
               checked={user?.correct_in_chat ?? true}
               onChange={(e) => props.onCorrection(e.target.checked)}
+              className="size-5 shrink-0 accent-accent-600"
+            />
+          </label>
+          <label className={row} title={t(lang, "listenModeHint")}>
+            <span>
+              {t(lang, "listenMode")}
+              <span className="muted block text-xs">{t(lang, "listenModeHint")}</span>
+            </span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={props.listenMode}
+              onChange={(e) => props.onListenMode(e.target.checked)}
               className="size-5 shrink-0 accent-accent-600"
             />
           </label>

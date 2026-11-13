@@ -47,7 +47,7 @@ export function ThemeBar({ lang, theme, disabled, onChange }: Props) {
   }
 
   return (
-    <div className="mb-2 flex items-center gap-2 px-2 text-xs">
+    <div className="mb-1 flex items-center gap-2 px-2 text-xs">
       {theme ? (
         <span className="chip">
           {t(lang, "theme_")}: {theme}
@@ -59,7 +59,7 @@ export function ThemeBar({ lang, theme, disabled, onChange }: Props) {
               onChange("");
             }}
             aria-label={t(lang, "clear")}
-            className="-mr-1 ml-0.5 rounded-full p-0.5 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+            className="-my-2 -mr-2 ml-0.5 rounded-full p-2 hover:bg-zinc-200 dark:hover:bg-zinc-700"
           >
             <CloseIcon className="size-3" />
           </button>
@@ -72,7 +72,7 @@ export function ThemeBar({ lang, theme, disabled, onChange }: Props) {
           setDraft(theme);
           setEditing(true);
         }}
-        className="muted underline-offset-2 hover:underline disabled:opacity-40"
+        className="muted inline-flex min-h-10 items-center underline-offset-2 hover:underline disabled:opacity-40"
       >
         {theme ? t(lang, "themeChange") : t(lang, "themeAdd")}
       </button>

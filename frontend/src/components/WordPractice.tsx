@@ -11,7 +11,7 @@ interface Props {
   practice: Practice;
 }
 
-const btn = "icon-btn size-10 text-xs font-semibold";
+const btn = "icon-btn size-11 text-xs font-semibold md:size-10";
 
 /** ▶ listen (1× / 0.8×) and 🎙 hold to try again, with the verdict (SPEC §5). */
 export function WordPractice({ word, contextId, practice }: Props) {

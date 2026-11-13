@@ -118,6 +118,12 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
 - [ ] Para voltar ao Google (grátis até 1M caracteres/mês): `TTS_PROVIDER=google` e `TTS_MONTHLY_CHARS=1000000`,
       depois `docker compose up -d backend`.
 
+## Fatia 5 — checagem manual e instalar no celular
+
+- [ ] Percorrer `docs/MANUAL_CHECKLIST.md` num celular de verdade (itens 16 e 17: instalar e microfone).
+- [ ] **Instalar como app:** no Chrome do Android, menu ⋮ → "Instalar app" / "Adicionar à tela inicial"; no iPhone (Safari),
+      Compartilhar → "Adicionar à Tela de Início". Funciona no endereço HTTPS (depois do deploy, ou com `npm run dev:lan`).
+
 ## Aluno principal: polonês aprendendo português
 
 - [ ] Entregar à pessoa o token do usuário **Aluno** (em `~/language-learner-token-aluno.txt`; depois apague o

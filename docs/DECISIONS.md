@@ -193,6 +193,14 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **"About you"** is a third page in the side menu: the remembered facts in an editor with a 100-word counter; saving sends `set_facts`, the confirmation comes back as `user_updated`.
 - **Real check (2026-11-13):** after the topic "Como mudou a sua cidade nos últimos dez anos?" and the theme "viagens pelo Brasil", the reply followed the answer, steered to travel and used the remembered fact about the learner's daughter.
 
+## 028 — Slice 5: responsive shell, usage page, listening mode, PWA (2026-11-13)
+- **Layout:** corrections column from 768 px (tablet 60/40, desktop fixed 24 rem); side menu fixed from 1024 px, drawer (☰) below; the phone keeps the 📝 sheet. Touch targets in the chat are ≥ 44 px on phones (36 px from tablet up).
+- **Usage page** in the side menu (author's choice) instead of a HUD in the right column; the footer line stays.
+- **Listening mode** (SPEC "blur text"): a per-browser switch in ⚙ (`localStorage`); AI replies are blurred until tapped; ▶ / 0.8× still work.
+- **PWA:** `manifest.webmanifest` (name in Portuguese, the language being learned), SVG + PNG icons (192/512, maskable, apple-touch) drawn here and generated once with Pillow outside the project. No service worker (not required by SPEC §9), so no offline mode.
+- **Keyboard focus:** a visible indigo ring via `:focus-visible` (literal colour: Tailwind only emits theme variables that classes use).
+- **Manual checklist** (`docs/MANUAL_CHECKLIST.md`) run on 2026-11-13 in the app's browser at 375 / 768 / 1280 px with a test user: items 1–15 pass on all three (the run found and fixed 36 px replay buttons and a 16 px theme link on phones, and a grey focus ring). Items 16 (installing on a real phone) and 17 (microphone) need a physical device.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |

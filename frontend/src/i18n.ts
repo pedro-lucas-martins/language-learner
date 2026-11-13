@@ -110,6 +110,9 @@ const ptBR = {
   metricsFirstToken: "1º texto da IA",
   voiceEdge: "Voz reserva gratuita",
   usageVoicePlan: "Caracteres da voz principal × cota do mês",
+  listenMode: "Modo escuta",
+  listenModeHint: "Esconde o texto da IA até você tocar, para treinar o ouvido",
+  tapToReveal: "Toque para ver o texto",
   voiceBrowser: "Voz do navegador",
 } as const;
 
@@ -221,6 +224,9 @@ const plPL: Strings = {
   metricsFirstToken: "pierwszy tekst AI",
   voiceEdge: "Darmowy głos zapasowy",
   usageVoicePlan: "Znaki głównego głosu × limit miesięczny",
+  listenMode: "Tryb słuchania",
+  listenModeHint: "Ukrywa tekst AI, dopóki go nie dotkniesz, żeby ćwiczyć słuch",
+  tapToReveal: "Dotknij, aby zobaczyć tekst",
   voiceBrowser: "Głos przeglądarki",
 };
 
