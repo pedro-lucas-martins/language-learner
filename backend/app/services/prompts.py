@@ -98,6 +98,7 @@ def chat_system_prompt(
     recast: bool = False,
     correct: bool = False,
     explain_lang: str | None = None,
+    theme: str = "",
 ) -> str:
     """System prompt for Track 1 (conversation).
 
@@ -117,6 +118,11 @@ def chat_system_prompt(
         f"{_DIRECTION_NOTES[target_lang]}"
     )
     parts = [static, _LEVEL_RULES[level]]
+    if theme.strip():
+        parts.append(
+            "Theme chosen by the learner: steer the conversation gently towards "
+            f"«{theme.strip()}», without forcing it."
+        )
     if correct:
         parts.append(
             correction_rule(
@@ -154,3 +160,32 @@ def summary_user_prompt(previous: str, turns: list[Turn]) -> str:
 def truncate_words(text: str, max_words: int) -> str:
     words = text.split()
     return " ".join(words[:max_words])
+
+
+FACTS_MAX_WORDS = 100
+
+
+def facts_system_prompt(lang: str) -> str:
+    """Keeps `user_facts` (SPEC §4.3), written in the learner's ui_lang."""
+    return (
+        "You keep a short profile of a language learner, used by a conversation partner to "
+        "remember them next time. Merge the previous profile with any DURABLE facts from this "
+        "conversation: name, where they live, job or studies, family, hobbies, goals, travel "
+        "plans, likes and dislikes. Ignore temporary things (what they ate today, the weather, "
+        "their mood) and anything said only as a language exercise. Keep facts already in the "
+        f"profile unless the learner said they changed. Write at most {FACTS_MAX_WORDS} words in "
+        f"{LANG_NAMES[lang]}, as short notes separated by semicolons. Output only the profile; "
+        "if there is nothing to keep, output the previous profile unchanged."
+    )
+
+
+def facts_user_prompt(previous: str, summary: str, turns: list[Turn]) -> str:
+    lines = [
+        f"Previous profile: {previous or '(empty)'}",
+        f"Conversation summary: {summary or '(none)'}",
+    ]
+    lines.append("Last turns:")
+    for turn in turns:
+        lines.append(f"Learner: {turn.user}")
+        lines.append(f"Friend: {turn.ai}")
+    return "\n".join(lines)

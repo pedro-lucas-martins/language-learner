@@ -180,6 +180,13 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Learner:** new user "Aluno" (pl-PL → pt-BR, A2; UI and explanations in Polish). Testing and new content (e.g. slice 4 topics) focus on PL→PT first; the PT→PL direction stays in the code (the bidirectional rule is unchanged).
 - **Consequence:** Brazilian testers speaking Polish get a weaker transcription with this model (it measured 18% on accented Polish).
 
+## 026 — Slice 4 (backend): topics, theme, learner facts (2026-11-13)
+- **Topics only in Portuguese** (author's choice, an approved exception to "both directions are first-class"): 125 icebreakers, 25 per level A1–C1, in `app/data/topics.json`, written by an AI — **a native speaker should review them**. For learners of Polish `suggest_topic` returns `bad_request` and the UI hides 💡. SPEC §1/§8 updated.
+- **`suggest_topic`** picks an unused topic of the learner's level (the list restarts when exhausted), stores it as an AI message, sends `topic` and speaks it from the TTS cache. The next reply sees the topic as the AI's last message (merged into it when needed, so roles still alternate). Real check: 0 LLM rows and 0 TTS characters for a cached topic; `precompute_topic_audio.py` cached all 125 with Google (6,303 characters; ElevenLabs was skipped at 95% of its allowance).
+- **Theme:** `set_theme` (≤40 chars, session only) adds one steering line after the level rules; empty clears it.
+- **User facts:** written in the learner's `ui_lang` (SPEC §4.3 changed from `native_lang`), ≤100 words (truncated), updated by the utility model when a session with at least one turn closes; a failure keeps the old facts. `set_facts` saves an edit; `UserInfo` carries `user_facts`. Real check: "Pracuje jako programator; mieszka w Gdańsku; ma córkę; hobby: żeglarstwo."
+- **Consequence:** the session close now makes one extra small utility call (a fraction of a cent). Topic audio must be precomputed again if the default voices or the active provider change (the cache key includes them).
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |

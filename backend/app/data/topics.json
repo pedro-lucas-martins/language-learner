@@ -1,0 +1,877 @@
+[
+ {
+  "id": "pt-a1-01",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "rotina",
+  "text": "Você acorda cedo ou tarde?"
+ },
+ {
+  "id": "pt-a1-02",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "comida",
+  "text": "Você prefere café ou chá de manhã?"
+ },
+ {
+  "id": "pt-a1-03",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "família",
+  "text": "Você tem irmãos ou irmãs?"
+ },
+ {
+  "id": "pt-a1-04",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "casa",
+  "text": "Você mora em uma casa ou em um apartamento?"
+ },
+ {
+  "id": "pt-a1-05",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "animais",
+  "text": "Você tem um bicho de estimação?"
+ },
+ {
+  "id": "pt-a1-06",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "comida",
+  "text": "Qual é a sua fruta favorita?"
+ },
+ {
+  "id": "pt-a1-07",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "tempo",
+  "text": "Hoje está frio ou calor aí na Polônia?"
+ },
+ {
+  "id": "pt-a1-08",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "cidade",
+  "text": "Você mora em uma cidade grande ou pequena?"
+ },
+ {
+  "id": "pt-a1-09",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "lazer",
+  "text": "Você gosta de música? Qual estilo?"
+ },
+ {
+  "id": "pt-a1-10",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "esporte",
+  "text": "Você pratica algum esporte?"
+ },
+ {
+  "id": "pt-a1-11",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "comida",
+  "text": "Você gosta de cozinhar?"
+ },
+ {
+  "id": "pt-a1-12",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "trabalho",
+  "text": "Você trabalha ou estuda?"
+ },
+ {
+  "id": "pt-a1-13",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "cores",
+  "text": "Qual é a sua cor favorita?"
+ },
+ {
+  "id": "pt-a1-14",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "fim de semana",
+  "text": "Você gosta mais de sábado ou de domingo?"
+ },
+ {
+  "id": "pt-a1-15",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "transporte",
+  "text": "Você vai para o trabalho de ônibus, de carro ou a pé?"
+ },
+ {
+  "id": "pt-a1-16",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "comida",
+  "text": "Você já comeu pão de queijo?"
+ },
+ {
+  "id": "pt-a1-17",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "lazer",
+  "text": "Você gosta de ver filmes em casa?"
+ },
+ {
+  "id": "pt-a1-18",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "idiomas",
+  "text": "Você fala inglês?"
+ },
+ {
+  "id": "pt-a1-19",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "rotina",
+  "text": "Você toma café da manhã todos os dias?"
+ },
+ {
+  "id": "pt-a1-20",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "estações",
+  "text": "Você prefere o verão ou o inverno?"
+ },
+ {
+  "id": "pt-a1-21",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "Brasil",
+  "text": "Você conhece alguma música brasileira?"
+ },
+ {
+  "id": "pt-a1-22",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "lazer",
+  "text": "Você gosta de ler livros?"
+ },
+ {
+  "id": "pt-a1-23",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "comida",
+  "text": "Qual é a sua comida polonesa favorita?"
+ },
+ {
+  "id": "pt-a1-24",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "família",
+  "text": "Você mora sozinho ou com a família?"
+ },
+ {
+  "id": "pt-a1-25",
+  "lang": "pt-BR",
+  "level": "A1",
+  "theme": "animais",
+  "text": "Você prefere cachorro ou gato?"
+ },
+ {
+  "id": "pt-a2-01",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "fim de semana",
+  "text": "O que você fez no último fim de semana?"
+ },
+ {
+  "id": "pt-a2-02",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "viagens",
+  "text": "Qual foi a última cidade que você visitou?"
+ },
+ {
+  "id": "pt-a2-03",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "comida",
+  "text": "O que você comeu ontem no jantar?"
+ },
+ {
+  "id": "pt-a2-04",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "rotina",
+  "text": "Como é um dia normal para você?"
+ },
+ {
+  "id": "pt-a2-05",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "Brasil",
+  "text": "Por que você quer aprender português?"
+ },
+ {
+  "id": "pt-a2-06",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "compras",
+  "text": "Você prefere comprar roupas na loja ou pela internet?"
+ },
+ {
+  "id": "pt-a2-07",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "lazer",
+  "text": "Qual foi o último filme que você assistiu?"
+ },
+ {
+  "id": "pt-a2-08",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "infância",
+  "text": "Onde você morava quando era criança?"
+ },
+ {
+  "id": "pt-a2-09",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "amigos",
+  "text": "Como você conheceu o seu melhor amigo ou a sua melhor amiga?"
+ },
+ {
+  "id": "pt-a2-10",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "comida",
+  "text": "Qual prato você sabe cozinhar bem?"
+ },
+ {
+  "id": "pt-a2-11",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "férias",
+  "text": "Onde você passou as últimas férias?"
+ },
+ {
+  "id": "pt-a2-12",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "trabalho",
+  "text": "O que você mais gosta no seu trabalho ou nos seus estudos?"
+ },
+ {
+  "id": "pt-a2-13",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "cidade",
+  "text": "O que tem de bonito na sua cidade para um turista ver?"
+ },
+ {
+  "id": "pt-a2-14",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "festas",
+  "text": "Como você comemora o seu aniversário?"
+ },
+ {
+  "id": "pt-a2-15",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "música",
+  "text": "Que música você escuta quando está feliz?"
+ },
+ {
+  "id": "pt-a2-16",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "tempo",
+  "text": "O que você gosta de fazer quando chove?"
+ },
+ {
+  "id": "pt-a2-17",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "Polônia",
+  "text": "Qual é a festa mais importante do ano na Polônia?"
+ },
+ {
+  "id": "pt-a2-18",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "esporte",
+  "text": "Você assistiu algum jogo de futebol recentemente?"
+ },
+ {
+  "id": "pt-a2-19",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "casa",
+  "text": "Qual é o cômodo favorito da sua casa? Por quê?"
+ },
+ {
+  "id": "pt-a2-20",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "viagens",
+  "text": "Você prefere viajar de avião ou de trem?"
+ },
+ {
+  "id": "pt-a2-21",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "rotina",
+  "text": "O que você faz para relaxar depois de um dia cansativo?"
+ },
+ {
+  "id": "pt-a2-22",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "comida",
+  "text": "Você já experimentou alguma comida brasileira? Gostou?"
+ },
+ {
+  "id": "pt-a2-23",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "lazer",
+  "text": "Você tem algum hobby novo este ano?"
+ },
+ {
+  "id": "pt-a2-24",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "planos",
+  "text": "O que você vai fazer no próximo fim de semana?"
+ },
+ {
+  "id": "pt-a2-25",
+  "lang": "pt-BR",
+  "level": "A2",
+  "theme": "família",
+  "text": "Quem da sua família cozinha melhor?"
+ },
+ {
+  "id": "pt-b1-01",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "viagens",
+  "text": "Se você pudesse viajar para qualquer lugar do Brasil, para onde iria?"
+ },
+ {
+  "id": "pt-b1-02",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "cultura",
+  "text": "O que você acha que os brasileiros e os poloneses têm em comum?"
+ },
+ {
+  "id": "pt-b1-03",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "trabalho",
+  "text": "Como seria o seu trabalho dos sonhos?"
+ },
+ {
+  "id": "pt-b1-04",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "memórias",
+  "text": "Qual é uma lembrança boa que você tem da sua infância?"
+ },
+ {
+  "id": "pt-b1-05",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "idiomas",
+  "text": "Qual é a parte mais difícil de aprender português para você?"
+ },
+ {
+  "id": "pt-b1-06",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "tecnologia",
+  "text": "Quanto tempo por dia você passa no celular? Acha que é muito?"
+ },
+ {
+  "id": "pt-b1-07",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "comida",
+  "text": "Que comida da sua infância você ainda adora?"
+ },
+ {
+  "id": "pt-b1-08",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "cidade",
+  "text": "Como mudou a sua cidade nos últimos dez anos?"
+ },
+ {
+  "id": "pt-b1-09",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "lazer",
+  "text": "Que livro ou série você recomendaria para um amigo? Por quê?"
+ },
+ {
+  "id": "pt-b1-10",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "saúde",
+  "text": "O que você faz para manter uma vida saudável?"
+ },
+ {
+  "id": "pt-b1-11",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "viagens",
+  "text": "Conte uma viagem em que alguma coisa deu errado."
+ },
+ {
+  "id": "pt-b1-12",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "amizade",
+  "text": "O que faz uma pessoa ser um bom amigo, na sua opinião?"
+ },
+ {
+  "id": "pt-b1-13",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "Brasil",
+  "text": "O que você imaginava sobre o Brasil antes de começar a aprender português?"
+ },
+ {
+  "id": "pt-b1-14",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "planos",
+  "text": "Que objetivo você quer alcançar até o fim do ano?"
+ },
+ {
+  "id": "pt-b1-15",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "estações",
+  "text": "Como é o Natal na Polônia? O que vocês comem?"
+ },
+ {
+  "id": "pt-b1-16",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "trabalho",
+  "text": "Você prefere trabalhar em casa ou no escritório?"
+ },
+ {
+  "id": "pt-b1-17",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "natureza",
+  "text": "Você gosta mais de praia, de montanha ou de cidade?"
+ },
+ {
+  "id": "pt-b1-18",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "música",
+  "text": "Que música marcou uma fase importante da sua vida?"
+ },
+ {
+  "id": "pt-b1-19",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "costumes",
+  "text": "Que costume polonês você explicaria para um brasileiro?"
+ },
+ {
+  "id": "pt-b1-20",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "dinheiro",
+  "text": "Você costuma economizar ou prefere gastar com experiências?"
+ },
+ {
+  "id": "pt-b1-21",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "aprendizado",
+  "text": "Que habilidade você gostaria de aprender e por quê?"
+ },
+ {
+  "id": "pt-b1-22",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "comida",
+  "text": "Se você abrisse um restaurante, que tipo de comida serviria?"
+ },
+ {
+  "id": "pt-b1-23",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "rotina",
+  "text": "Como seria o seu domingo perfeito?"
+ },
+ {
+  "id": "pt-b1-24",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "transporte",
+  "text": "O transporte público na sua cidade funciona bem?"
+ },
+ {
+  "id": "pt-b1-25",
+  "lang": "pt-BR",
+  "level": "B1",
+  "theme": "memórias",
+  "text": "Qual foi o melhor presente que você já recebeu?"
+ },
+ {
+  "id": "pt-b2-01",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "tecnologia",
+  "text": "Você acha que as redes sociais aproximam ou afastam as pessoas?"
+ },
+ {
+  "id": "pt-b2-02",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "trabalho",
+  "text": "A semana de quatro dias de trabalho funcionaria no seu país?"
+ },
+ {
+  "id": "pt-b2-03",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "cultura",
+  "text": "Que diferença cultural entre a Polônia e o Brasil mais te surpreende?"
+ },
+ {
+  "id": "pt-b2-04",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "educação",
+  "text": "O que você mudaria no sistema de ensino da Polônia?"
+ },
+ {
+  "id": "pt-b2-05",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "meio ambiente",
+  "text": "O que as pessoas comuns podem fazer contra as mudanças climáticas?"
+ },
+ {
+  "id": "pt-b2-06",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "cidade",
+  "text": "Vale a pena morar no centro da cidade, mesmo pagando mais caro?"
+ },
+ {
+  "id": "pt-b2-07",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "viagens",
+  "text": "Turismo em massa ajuda ou prejudica as cidades mais visitadas?"
+ },
+ {
+  "id": "pt-b2-08",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "idiomas",
+  "text": "Aprender um idioma muda a forma como a gente pensa?"
+ },
+ {
+  "id": "pt-b2-09",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "saúde",
+  "text": "Por que é tão difícil manter hábitos saudáveis no longo prazo?"
+ },
+ {
+  "id": "pt-b2-10",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "família",
+  "text": "Como mudou o papel dos avós nas famílias de hoje?"
+ },
+ {
+  "id": "pt-b2-11",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "tecnologia",
+  "text": "Você confiaria em um carro que dirige sozinho? Por quê?"
+ },
+ {
+  "id": "pt-b2-12",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "trabalho",
+  "text": "É melhor ter um emprego estável ou trabalhar por conta própria?"
+ },
+ {
+  "id": "pt-b2-13",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "consumo",
+  "text": "Comprar roupas de segunda mão é só moda ou é o futuro?"
+ },
+ {
+  "id": "pt-b2-14",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "cultura",
+  "text": "Que filme ou livro polonês todo estrangeiro deveria conhecer?"
+ },
+ {
+  "id": "pt-b2-15",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "sociedade",
+  "text": "Por que tantos jovens saem da cidade onde nasceram?"
+ },
+ {
+  "id": "pt-b2-16",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "Brasil",
+  "text": "O que você acha que o Brasil poderia aprender com a Polônia, e vice-versa?"
+ },
+ {
+  "id": "pt-b2-17",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "dinheiro",
+  "text": "O dinheiro traz felicidade até certo ponto?"
+ },
+ {
+  "id": "pt-b2-18",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "esporte",
+  "text": "Por que o futebol mexe tanto com as emoções das pessoas?"
+ },
+ {
+  "id": "pt-b2-19",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "tecnologia",
+  "text": "A inteligência artificial vai mudar a sua profissão? Como?"
+ },
+ {
+  "id": "pt-b2-20",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "comida",
+  "text": "Você acha que todo mundo deveria comer menos carne?"
+ },
+ {
+  "id": "pt-b2-21",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "memória",
+  "text": "Que acontecimento histórico você gostaria de ter visto de perto?"
+ },
+ {
+  "id": "pt-b2-22",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "lazer",
+  "text": "Ficar sem fazer nada às vezes é perda de tempo ou necessidade?"
+ },
+ {
+  "id": "pt-b2-23",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "viagens",
+  "text": "Viajar sozinho ou acompanhado: o que você prefere e por quê?"
+ },
+ {
+  "id": "pt-b2-24",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "costumes",
+  "text": "Qual é a regra de etiqueta polonesa que um brasileiro poderia quebrar sem querer?"
+ },
+ {
+  "id": "pt-b2-25",
+  "lang": "pt-BR",
+  "level": "B2",
+  "theme": "sociedade",
+  "text": "Como seria a cidade ideal para se viver?"
+ },
+ {
+  "id": "pt-c1-01",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "sociedade",
+  "text": "Até que ponto a tecnologia deixou a vida mais simples ou mais complicada?"
+ },
+ {
+  "id": "pt-c1-02",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "trabalho",
+  "text": "Trabalhar com o que se ama é um privilégio ou uma armadilha?"
+ },
+ {
+  "id": "pt-c1-03",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "cultura",
+  "text": "Existe um \"jeitinho\" polonês, parecido com o jeitinho brasileiro?"
+ },
+ {
+  "id": "pt-c1-04",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "idiomas",
+  "text": "Uma língua carrega a identidade de um povo? Dá para traduzir tudo?"
+ },
+ {
+  "id": "pt-c1-05",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "educação",
+  "text": "A escola prepara as pessoas para a vida real ou só para provas?"
+ },
+ {
+  "id": "pt-c1-06",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "política",
+  "text": "Votar deveria ser obrigatório, como no Brasil?"
+ },
+ {
+  "id": "pt-c1-07",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "meio ambiente",
+  "text": "Crescimento econômico e proteção ambiental podem andar juntos?"
+ },
+ {
+  "id": "pt-c1-08",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "mídia",
+  "text": "Como separar informação de opinião numa época de tantas notícias falsas?"
+ },
+ {
+  "id": "pt-c1-09",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "sociedade",
+  "text": "O home office mudou para sempre a relação entre empresas e funcionários?"
+ },
+ {
+  "id": "pt-c1-10",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "história",
+  "text": "Como a história recente da Polônia ainda aparece no dia a dia das pessoas?"
+ },
+ {
+  "id": "pt-c1-11",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "ética",
+  "text": "Seria aceitável editar genes para evitar doenças? Onde fica o limite?"
+ },
+ {
+  "id": "pt-c1-12",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "cidade",
+  "text": "As grandes cidades ainda fazem sentido com o trabalho remoto?"
+ },
+ {
+  "id": "pt-c1-13",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "cultura",
+  "text": "O que se perde e o que se ganha quando uma cultura vira produto turístico?"
+ },
+ {
+  "id": "pt-c1-14",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "tecnologia",
+  "text": "A inteligência artificial deveria criar arte? Isso ainda é arte?"
+ },
+ {
+  "id": "pt-c1-15",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "felicidade",
+  "text": "Por que países ricos nem sempre são os mais felizes?"
+ },
+ {
+  "id": "pt-c1-16",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "família",
+  "text": "Casar e ter filhos ainda são marcos obrigatórios da vida adulta?"
+ },
+ {
+  "id": "pt-c1-17",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "consumo",
+  "text": "A gente compra coisas porque precisa ou para mostrar quem é?"
+ },
+ {
+  "id": "pt-c1-18",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "Brasil",
+  "text": "Que estereótipo sobre o Brasil você acha mais injusto, e qual tem um fundo de verdade?"
+ },
+ {
+  "id": "pt-c1-19",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "saúde",
+  "text": "A saúde mental é tratada com a seriedade que merece no seu país?"
+ },
+ {
+  "id": "pt-c1-20",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "migração",
+  "text": "O que a imigração muda numa sociedade, para o bem e para o mal?"
+ },
+ {
+  "id": "pt-c1-21",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "esporte",
+  "text": "Grandes eventos como a Copa do Mundo valem o que custam para o país que recebe?"
+ },
+ {
+  "id": "pt-c1-22",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "língua",
+  "text": "Os empréstimos do inglês empobrecem ou enriquecem um idioma?"
+ },
+ {
+  "id": "pt-c1-23",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "trabalho",
+  "text": "Como você imagina o mercado de trabalho daqui a vinte anos?"
+ },
+ {
+  "id": "pt-c1-24",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "valores",
+  "text": "Que valor dos seus pais você mantém e qual você decidiu deixar para trás?"
+ },
+ {
+  "id": "pt-c1-25",
+  "lang": "pt-BR",
+  "level": "C1",
+  "theme": "filosofia",
+  "text": "É possível ser realmente livre vivendo em sociedade?"
+ }
+]

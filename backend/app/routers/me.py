@@ -40,4 +40,5 @@ async def me(user: Annotated[User, Depends(current_user)]) -> UserInfo:
         level=user.level,  # type: ignore[arg-type]
         recast_pronunciation=user.recast_pronunciation,
         correct_in_chat=user.correct_in_chat,
+        user_facts=user.user_facts,
     )

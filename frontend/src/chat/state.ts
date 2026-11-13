@@ -156,6 +156,15 @@ function applyServerMsg(state: ChatState, msg: ServerMsg): ChatState {
         ],
       };
 
+    case "topic":
+      return {
+        ...state,
+        messages: [
+          ...state.messages,
+          { id: msg.message_id, role: "ai", text: msg.text, streaming: false },
+        ],
+      };
+
     case "ai_text_delta": {
       const index = state.messages.findIndex((m) => m.id === msg.message_id);
       if (index === -1) {

@@ -59,6 +59,20 @@ class SetUiLangMsg(_Msg):
     ui_lang: Lang
 
 
+class SuggestTopicMsg(_Msg):
+    type: Literal["suggest_topic"]
+
+
+class SetThemeMsg(_Msg):
+    type: Literal["set_theme"]
+    theme: str = Field(max_length=40)
+
+
+class SetFactsMsg(_Msg):
+    type: Literal["set_facts"]
+    text: str = Field(max_length=2000)
+
+
 class SpeakWordMsg(_Msg):
     type: Literal["speak_word"]
     word: str = Field(min_length=1, max_length=80)
@@ -87,6 +101,9 @@ ClientMsg = Annotated[
     | RegradeMsg
     | SetRecastMsg
     | SpeakWordMsg
+    | SuggestTopicMsg
+    | SetThemeMsg
+    | SetFactsMsg
     | SetUiLangMsg
     | SetCorrectionMsg
     | StartOfSpeechMsg
@@ -108,6 +125,7 @@ class UserInfo(BaseModel):
     level: Level
     recast_pronunciation: bool
     correct_in_chat: bool
+    user_facts: str = ""
 
 
 class ReadyMsg(BaseModel):
@@ -119,6 +137,14 @@ class ReadyMsg(BaseModel):
 class UserUpdatedMsg(BaseModel):
     type: Literal["user_updated"] = "user_updated"
     user: UserInfo
+
+
+class TopicMsg(BaseModel):
+    """An AI message picked from the topic list: no LLM call (SPEC §8)."""
+
+    type: Literal["topic"] = "topic"
+    message_id: str
+    text: str
 
 
 class TranscriptMsg(BaseModel):
@@ -224,6 +250,7 @@ ServerMsg = (
     ReadyMsg
     | UserUpdatedMsg
     | TranscriptMsg
+    | TopicMsg
     | AiTextDeltaMsg
     | AiTextDoneMsg
     | AudioMetaMsg

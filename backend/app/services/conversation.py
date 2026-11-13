@@ -12,6 +12,7 @@ message or `user_started_speaking` cancels the running turn (barge-in).
 import asyncio
 import contextlib
 import logging
+import random
 import time
 import uuid
 from collections.abc import Awaitable, Callable, Coroutine
@@ -33,6 +34,7 @@ from app.protocol import (
     InterruptedMsg,
     MetricsMsg,
     PronResultMsg,
+    TopicMsg,
     TranscriptMsg,
     TtsFallbackMsg,
     UsageMsg,
@@ -41,6 +43,7 @@ from app.protocol import (
 )
 from app.services import feedback as feedback_svc
 from app.services import flashcards as flashcards_svc
+from app.services import topics as topics_svc
 from app.services import usage as usage_svc
 from app.services.llm import (
     AudioInput,
@@ -54,8 +57,11 @@ from app.services.llm import (
 )
 from app.services.memory import ConversationMemory
 from app.services.prompts import (
+    FACTS_MAX_WORDS,
     SUMMARY_SYSTEM_PROMPT,
     chat_system_prompt,
+    facts_system_prompt,
+    facts_user_prompt,
     summary_user_prompt,
     truncate_words,
 )
@@ -121,6 +127,7 @@ class Learner:
             level=self.level,  # type: ignore[arg-type]
             recast_pronunciation=self.recast_pronunciation,
             correct_in_chat=self.correct_in_chat,
+            user_facts=self.user_facts,
         )
 
 
@@ -167,6 +174,12 @@ class Conversation:
         self._background: set[asyncio.Task[None]] = set()
         self._turn: asyncio.Task[None] | None = None
         self._turn_ai_id: uuid.UUID | None = None
+        # Slice 4: topics asked this session, steering theme, AI-only topic awaiting a reply.
+        self._used_topics: set[str] = set()
+        self._rng = random.Random()
+        self._theme = ""
+        self._pending_topic: str | None = None
+        self._turns_this_session = 0
 
     # --- lifecycle --------------------------------------------------------------
 
@@ -200,6 +213,7 @@ class Conversation:
         await self._cancel_turn()
         if self._background:
             await asyncio.wait(self._background, timeout=10)
+        await self._update_facts()
         async with session_factory()() as db:
             chat = await db.get(ChatSession, self.session_id)
             if chat is not None:
@@ -257,6 +271,84 @@ class Conversation:
             return
         self.learner.ui_lang = ui_lang
         await self.send(UserUpdatedMsg(user=self.learner.info()))
+
+    # --- slice 4: topics, theme, facts (SPEC §4.3, §8) ------------------------------------
+
+    async def suggest_topic(self) -> None:
+        """💡: an icebreaker from the list, spoken by TTS, with zero LLM calls."""
+        await self.interrupt()
+        self._launch(self._topic_turn())
+
+    async def _topic_turn(self) -> None:
+        topic = topics_svc.pick(
+            topics_svc.load_topics(),
+            lang=self.learner.target_lang,
+            level=self.learner.level,
+            used=self._used_topics,
+            rng=self._rng,
+        )
+        if topic is None:
+            await self._error("bad_request")  # no topics for this language (SPEC §8)
+            return
+        ai_msg_id = await self._persist(role="ai", text=topic.text)
+        self._turn_ai_id = ai_msg_id
+        self._pending_topic = topic.text
+        await self.send(TopicMsg(message_id=str(ai_msg_id), text=topic.text))
+        snap = await self._snapshot()
+        await self._speak_sentence(
+            str(ai_msg_id),
+            0,
+            topic.text,
+            0,
+            over=snap.tts_over_allowance,
+            backup_over=snap.backup_over_allowance,
+        )
+
+    async def set_theme(self, theme: str) -> None:
+        """A short steering note in the prompt until changed; empty clears it."""
+        self._theme = theme.strip()[:40]
+
+    async def set_facts(self, text: str) -> None:
+        facts = truncate_words(text.strip(), FACTS_MAX_WORDS)
+        async with session_factory()() as db:
+            user = await db.get(User, self.learner.id)
+            if user is not None:
+                user.user_facts = facts
+            await db.commit()
+        if user is None:
+            await self._error("bad_request")
+            return
+        self.learner.user_facts = facts
+        await self.send(UserUpdatedMsg(user=self.learner.info()))
+
+    async def _update_facts(self) -> None:
+        """At session end, merge durable facts from this conversation (utility model)."""
+        model = self.settings.gemini_utility_model
+        if not self._turns_this_session or not model:
+            return
+        try:
+            facts, used = await self.llm.complete(
+                model=model,
+                system=facts_system_prompt(self.learner.ui_lang),
+                prompt=facts_user_prompt(
+                    self.learner.user_facts, self.memory.summary, self.memory.context_turns()[-6:]
+                ),
+                max_output_tokens=300,
+                temperature=0.2,
+            )
+        except LlmError as exc:
+            log.warning("user_facts update failed, keeping the old ones: %s", exc)
+            return
+        await self._record_llm("utility", model, used)
+        facts = truncate_words(facts.strip(), FACTS_MAX_WORDS)
+        if not facts:
+            return
+        async with session_factory()() as db:
+            user = await db.get(User, self.learner.id)
+            if user is not None:
+                user.user_facts = facts
+            await db.commit()
+        self.learner.user_facts = facts
 
     async def set_correction(self, enabled: bool) -> None:
         """Correction in the conversation on/off (SPEC §4.1)."""
@@ -481,6 +573,7 @@ class Conversation:
         await self._persist(role="ai", text=reply, message_id=ai_msg_id)
         await self.send(AiTextDoneMsg(message_id=str(ai_msg_id), text=reply))
         self.memory.add_turn(text, reply)
+        self._turns_this_session += 1
         self._maybe_summarize()
 
         if speaker is not None:
@@ -507,6 +600,7 @@ class Conversation:
             return
         await self._persist(role="ai", text=partial, message_id=ai_msg_id)
         self.memory.add_turn(user_text, partial)
+        self._turns_this_session += 1
         self._maybe_summarize()
 
     async def _speak(
@@ -610,10 +704,18 @@ class Conversation:
             recast=audio is not None,
             correct=self.learner.correct_in_chat,
             explain_lang=self.learner.ui_lang,
+            theme=self._theme,
         )
         history: list[tuple[str, str]] = []
         for turn in self.memory.context_turns():
             history += [("user", turn.user), ("model", turn.ai)]
+        if self._pending_topic:
+            # The learner is answering a suggested topic: it was the AI's last message.
+            if history and history[-1][0] == "model":
+                history[-1] = ("model", f"{history[-1][1]}\n{self._pending_topic}")
+            else:
+                history.append(("model", self._pending_topic))
+            self._pending_topic = None
         history.append(("user", text))
 
         chain = chat_model_chain(self.settings, budget_exceeded=budget_exceeded)

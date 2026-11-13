@@ -124,6 +124,9 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
       arquivo). A interface e as explicações aparecem em polonês; o nível (A2) muda no menu ⚙.
 - [ ] Pedir a um falante nativo de polonês para revisar os textos da interface (`frontend/src/i18n.ts`, bloco `plPL`):
       foram escritos por IA.
+- [ ] Pedir a um nativo de português para revisar os 125 temas de conversa (`backend/app/data/topics.json`).
+- [ ] Se trocar a voz (ex.: assinar o ElevenLabs Starter ou mudar `ELEVENLABS_VOICES_PT`), gerar de novo o áudio dos temas:
+      `cd backend && .venv/bin/python -m scripts.precompute_topic_audio` (mostra o custo e pede confirmação).
 - [ ] Se possível, gravar 5–10 frases reais da pessoa falando português (com erros) em `backend/scripts/stt_clips/`
       para medir a transcrição com a voz dela (`python -m scripts.stt_eval`).
 

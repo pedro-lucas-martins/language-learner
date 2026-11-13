@@ -17,11 +17,14 @@ from app.protocol import (
     ReadyMsg,
     RegradeMsg,
     SetCorrectionMsg,
+    SetFactsMsg,
     SetLevelMsg,
     SetRecastMsg,
+    SetThemeMsg,
     SetUiLangMsg,
     SpeakWordMsg,
     StartOfSpeechMsg,
+    SuggestTopicMsg,
     UserStartedSpeakingMsg,
     UserTextMsg,
     client_msg_adapter,
@@ -180,6 +183,12 @@ async def chat_socket(websocket: WebSocket) -> None:
                     conversation.pron_retry(audio, done.mime, done.target_word, done.message_id)
                 else:
                     await conversation.submit_utterance(audio, done.mime)
+            elif isinstance(msg, SuggestTopicMsg):
+                await conversation.suggest_topic()
+            elif isinstance(msg, SetThemeMsg):
+                await conversation.set_theme(msg.theme)
+            elif isinstance(msg, SetFactsMsg):
+                await conversation.set_facts(msg.text)
             elif isinstance(msg, SpeakWordMsg):
                 conversation.speak_word(msg.word)
             elif isinstance(msg, UserStartedSpeakingMsg):

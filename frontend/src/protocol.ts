@@ -26,6 +26,9 @@ export type ClientMsg =
   | { type: "speak_word"; word: string }
   | { type: "set_ui_lang"; ui_lang: Lang }
   | { type: "set_correction"; enabled: boolean }
+  | { type: "suggest_topic" }
+  | { type: "set_theme"; theme: string }
+  | { type: "set_facts"; text: string }
   | {
       type: "start_of_speech";
       mime: string;
@@ -48,6 +51,8 @@ export interface UserInfo {
   recast_pronunciation: boolean;
   /** Correction in the conversation (SPEC §4.1). */
   correct_in_chat: boolean;
+  /** What the AI remembers about the learner (SPEC §4.3), ≤100 words. */
+  user_facts: string;
 }
 
 /** One grammar mistake (SPEC §5); explanations are in the learner's native language. */
@@ -73,6 +78,8 @@ export type ServerMsg =
   | { type: "ready"; user: UserInfo; session_id: string }
   | { type: "user_updated"; user: UserInfo }
   | { type: "transcript"; message_id: string; text: string }
+  /** A suggested topic: an AI message picked from a list, no LLM call (SPEC §8). */
+  | { type: "topic"; message_id: string; text: string }
   | { type: "ai_text_delta"; message_id: string; delta: string }
   | { type: "ai_text_done"; message_id: string; text: string }
   | {
@@ -117,6 +124,7 @@ const SERVER_TYPES = new Set<ServerMsg["type"]>([
   "ready",
   "user_updated",
   "transcript",
+  "topic",
   "ai_text_delta",
   "ai_text_done",
   "audio_meta",

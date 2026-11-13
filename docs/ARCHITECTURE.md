@@ -28,6 +28,15 @@ cancels it (LLM and TTS); the server sends `interrupted` and keeps the partial r
 `users.ui_lang` (default: `native_lang`) sets the UI strings, server messages and the language
 of every explanation; `set_ui_lang` changes it from the header selector.
 
+## Topics, theme and learner facts (SPEC §4.3, §8)
+
+`suggest_topic` takes an unused icebreaker for the learner's level from `app/data/topics.json`
+(Portuguese only), stores it as an AI message, sends `topic` and speaks it — from the TTS cache
+filled by `scripts/precompute_topic_audio.py`, so no LLM call and no new characters. `set_theme`
+adds a steering line to the chat prompt for the session. When a session with turns closes, the
+utility model merges durable facts into `users.user_facts` (≤100 words, in `ui_lang`); `set_facts`
+saves the learner's own edit.
+
 ## Track 2: feedback (SPEC §5)
 
 For every learner message with ≥ 3 words a background task (not cancelled by barge-in) calls
@@ -84,6 +93,8 @@ Every feedback with mistakes adds cards (`flashcards.py`, deduplicated). REST un
 | `app/services/usage.py` | `usage_events` rows, daily call cap, monthly spend estimate |
 | `app/services/conversation.py` | Per-socket orchestrator: turn tasks, barge-in, LLM → sentences → TTS, metrics |
 | `app/services/stt_service.py` | Gemini speech-to-text: verbatim prompt, retry, audio seconds |
+| `app/services/topics.py` | Topic list loading/validation and the no-repeat picker |
+| `app/data/topics.json` | 125 Portuguese icebreakers (25 per level) |
 | `app/services/warmup.py` | Free warm-up calls on connect (at most every 5 min) |
 | `app/services/feedback.py` | Track 2 prompts per direction, JSON schema, validation and filters |
 | `app/services/flashcards.py` | Cards from feedback (front/back, dedupe) |
@@ -98,6 +109,7 @@ Every feedback with mistakes adds cards (`flashcards.py`, deduplicated). REST un
 | `app/services/tts/cache.py` | `tts_cache` table access, sha256 key, LRU eviction by `TTS_CACHE_MAX_MB` |
 | `alembic/` | Migrations `0001`–`0005` (initial, tts_cache, feedback + flashcards, ui_lang, correct_in_chat) |
 | `scripts/create_user.py` | Creates a learner and prints the token once |
+| `scripts/precompute_topic_audio.py` | Puts every topic's audio in the TTS cache (asks before spending) |
 | `scripts/stt_eval.py` | Runs your recorded clips through the STT and compares with what you said |
 | `scripts/tts_bench.py` | TTS benchmark: TTFA per provider × language, blind A/B page, asks before spending |
 

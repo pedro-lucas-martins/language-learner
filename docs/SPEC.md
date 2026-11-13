@@ -15,7 +15,7 @@ It is **bidirectional**: each user has a `native_lang` and a `target_lang`.
 | PT→PL | Brazilian learning Polish | pl-PL | pt-BR |
 | PL→PT | Pole learning Portuguese | pt-BR | pl-PL |
 
-Both directions are first-class: every feature (prompts, topics, grammar and pronunciation rules, voices, UI strings) must exist for both.
+Both directions are first-class: every feature (prompts, grammar and pronunciation rules, voices, UI strings) must exist for both. **Approved exception (2026-11-13):** conversation topics (§8) exist only for learners of Portuguese, the main learner being a Polish speaker.
 The UI language — and the language of every explanation (grammar rules, contrast tips, pronunciation tips) — is `ui_lang`, which defaults to `native_lang` (simple i18n dictionary, two locales: `pt-BR`, `pl-PL`). A learner can change it in the app (`set_ui_lang`); contrast tips still compare with `native_lang`. This also lets a Portuguese speaker try the PL→PT direction while reading everything in Portuguese.
 
 Core experience: **free talk** with a friendly native-speaker AI, adapted to the learner's CEFR level (A1–C1), plus:
@@ -97,7 +97,7 @@ For voice turns, Track 1 receives the user's **audio** together with the verbati
 - Unit test this invariant explicitly.
 
 ### 4.3 user_facts
-- ≤100 words, stored in `users.user_facts`, written in `native_lang`.
+- ≤100 words, stored in `users.user_facts`, written in the learner's `ui_lang` (the language they read the app in).
 - Updated by a background task at session end (WS close) using the session's summary + last turns. Must keep only durable facts (hobbies, job, goals, family context the user mentioned) and stay ≤100 words (enforce by truncation after the LLM call).
 - Visible and editable by the user in the UI (desktop left panel / settings sheet on mobile).
 
@@ -202,7 +202,8 @@ Client → server:
 | `user_text` | `text` |
 | `user_started_speaking` | — |
 | `suggest_topic` | — |
-| `set_theme` | `theme` (free text, ≤40 chars) |
+| `set_theme` | `theme` (free text, ≤40 chars; empty clears it) |
+| `set_facts` | `text` (≤100 words) — the learner's edited `user_facts` (§4.3) |
 | `set_level` | `level` (A1…C1) |
 | `regrade` | `message_id`, `text` (grammar only — no audio) |
 | `set_recast` | `enabled` (bool) — pronunciation recast in Track 1 (§4.1) |
@@ -213,7 +214,7 @@ Client → server:
 Server → client:
 | type | payload |
 |---|---|
-| `ready` | `user` (name, `native_lang`, `target_lang`, `ui_lang`, level, voice, `recast_pronunciation`, `correct_in_chat`), `session_id` |
+| `ready` | `user` (name, `native_lang`, `target_lang`, `ui_lang`, level, voice, `recast_pronunciation`, `correct_in_chat`, `user_facts`), `session_id` |
 | `user_updated` | `user` (same shape as in `ready`) — after `set_level` or other settings changes |
 | `transcript` | `message_id`, `text` |
 | `ai_text_delta` | `message_id`, `delta` |
@@ -223,7 +224,7 @@ Server → client:
 | `tts_fallback` | `message_id`, `sentence`, `text`, `lang` — the browser speaks this sentence with `speechSynthesis`, in sentence order |
 | `feedback` | `message_id` (the learner's message), `source` (`audio` \| `text`), `ok`, `errs`, `pron` — per §5; `pron` is empty for `text` |
 | `pron_result` | `message_id`, `word`, `better` (bool), `tip` |
-| `topic` | `message_id`, `text` |
+| `topic` | `message_id`, `text` — an AI message with no LLM call; its audio follows as usual (`audio_meta` + binary or `tts_fallback`) |
 | `interrupted` | `message_id` |
 | `metrics` | `message_id`, `stt_ms` (null for typed turns), `llm_first_token_ms`, `first_audio_ms` (null if no server audio), `total_ms` — measured from `end_of_speech` / `user_text` (§6) |
 | `usage` | `month_usd_est`, `budget_usd`, `tts_chars_month`, `tts_chars_allowance`, `tts_provider_active` |
@@ -235,7 +236,7 @@ Define these as Pydantic models (backend) and TypeScript types (frontend) genera
 
 ## 8. Topics (zero tokens)
 
-- `backend/app/data/topics.json`: for **each** target language (pl-PL, pt-BR) × **each** level (A1…C1): ≥15 icebreaker questions → ≥150 total. Each item: `id, lang, level, theme, text`.
+- `backend/app/data/topics.json`: icebreaker questions for learners of **pt-BR only** (approved exception, §1): ≥25 per level (A1…C1) → ≥125. Each item: `id, lang, level, theme, text`. For learners of Polish, `suggest_topic` answers with an `error` (`bad_request`) and the UI hides the button.
 - Written by a native-quality standard; the agent must flag in its report that a native speaker should review them.
 - `suggest_topic` picks an unused (this session) topic matching the user's target language and level, adds it to history as an AI message, synthesizes it via TTS. No LLM call.
 - `set_theme` adds a one-line steering note to the prompt (after the level block) until changed.

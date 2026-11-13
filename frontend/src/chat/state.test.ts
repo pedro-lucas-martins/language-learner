@@ -8,6 +8,7 @@ const user: UserInfo = {
   native_lang: "pt-BR",
   ui_lang: "pt-BR",
   correct_in_chat: true,
+  user_facts: "",
   target_lang: "pl-PL",
   level: "A1",
   recast_pronunciation: true,
