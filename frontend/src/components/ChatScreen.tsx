@@ -97,6 +97,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
     correctionsSeen,
     setLevel,
     reconnect,
+    waking,
     dismissError,
   } = useChatSocket(token, audioRef);
   const lastAi = [...state.messages].reverse().find((m) => m.role === "ai");
@@ -305,7 +306,9 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
         </header>
 
         {state.status === "connecting" && (
-          <p className="muted px-4 py-1 text-center text-sm">{t(lang, "connecting")}</p>
+          <p role="status" className="muted px-4 py-1 text-center text-sm">
+            {t(lang, waking ? "serverWaking" : "connecting")}
+          </p>
         )}
         {state.status === "closed" && state.closeReason === "network" && (
           <div className="mx-4 flex items-center justify-center gap-3 rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:bg-amber-950/60 dark:text-amber-100">

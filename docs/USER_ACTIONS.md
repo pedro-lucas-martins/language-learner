@@ -148,6 +148,15 @@ O script mostra quantos caracteres vai gastar e pede confirmação antes de roda
 - [ ] O teto do Gemini está em `MONTHLY_BUDGET_USD=7` (R$ 75 − assinatura). Ao atingir, conversa, correções e transcrição
       passam para o modelo mais barato até o mês virar.
 
-## Fatia 6 (deploy) — detalhado depois
+## Fatia 6 (deploy)
 
-Contas gratuitas em Supabase, Render e Vercel.
+Passo a passo completo em `docs/DEPLOYMENT.md`. Você:
+
+1. Cria as contas (Supabase, Render, Vercel; dá para entrar com o GitHub) e libera o repositório privado.
+2. Supabase: cria o projeto em Frankfurt e salva a `DATABASE_URL` no arquivo `.env.production` (não vai para o git).
+3. Render: "New → Blueprint", cola os segredos e sobe a chave do Google como Secret File `gcp.json`.
+4. Vercel: importa o projeto com Root Directory `frontend` e `VITE_API_URL`.
+5. Volta à Render e põe `FRONTEND_URL` e `VERCEL_PREVIEW_REGEX`.
+6. Guarda o token do Aluno num gerenciador de senhas e manda para ele por um canal privado.
+
+Ao assinar o ElevenLabs Starter: troque as variáveis de voz na Render (seção "Voice provider" do DEPLOYMENT.md).

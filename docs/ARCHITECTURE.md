@@ -195,7 +195,10 @@ The spend estimate multiplies summed usage by the `PRICE_*` settings.
 - **Latency** is measured per turn (`metrics`), not promised. Warm local numbers are in
   `docs/DECISIONS.md` (012).
 
-## Not built yet
+## Production
 
-Feedback track, pronunciation, topics, flashcards, user_facts updates,
-responsive layouts, deploy. See SPEC §11.
+Vercel (static site) → Render free web service in Frankfurt (FastAPI + WebSocket, Docker, `render.yaml`) →
+Supabase Postgres (session pooler). The container runs `alembic upgrade head` on start. `/docs` and the
+OpenAPI schema are off when `APP_ENV=production`. The free server sleeps when idle: the login screen pings
+`/health`, and `useChatSocket` shows "waking up" after 3 s and retries network closes with backoff.
+Steps: `docs/DEPLOYMENT.md`.

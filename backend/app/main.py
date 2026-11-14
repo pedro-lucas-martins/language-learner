@@ -41,7 +41,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await database.dispose_engine()
 
 
-app = FastAPI(title="Language Learner API", version="0.2.0", lifespan=lifespan)
+# Interactive API docs only outside production: no need to publish the API map.
+_public_docs = settings.app_env != "production"
+app = FastAPI(
+    title="Language Learner API",
+    version="0.2.0",
+    lifespan=lifespan,
+    docs_url="/docs" if _public_docs else None,
+    redoc_url="/redoc" if _public_docs else None,
+    openapi_url="/openapi.json" if _public_docs else None,
+)
 app.state.llm = None
 app.state.tts = None
 app.state.settings = settings

@@ -201,6 +201,23 @@ Short records: context → decision → consequence. Newest at the bottom.
 - **Keyboard focus:** a visible indigo ring via `:focus-visible` (literal colour: Tailwind only emits theme variables that classes use).
 - **Manual checklist** (`docs/MANUAL_CHECKLIST.md`) run on 2026-11-13 in the app's browser at 375 / 768 / 1280 px with a test user: items 1–15 pass on all three (the run found and fixed 36 px replay buttons and a 16 px theme link on phones, and a grey focus ring). Items 16 (installing on a real phone) and 17 (microphone) need a physical device.
 
+## 029 — Slice 6: deploy on free plans (2026-11-14)
+
+- **Hosting:** Vercel Hobby (site), Render free web service in Frankfurt (Docker, `render.yaml` Blueprint),
+  Supabase free Postgres in eu-central-1 through the session pooler (asyncpg, `ssl=require`). Close to
+  Poland, R$ 0/month. Trade-off: Render sleeps after 15 min idle (~1 min to wake); no ping service, by choice.
+- **"Waking up" screen instead of keeping the server warm:** the login screen calls `/health`; after 3 s
+  without `ready` the chat says the server is waking; network closes retry by themselves (1 s → 10 s,
+  10 tries ≈ 75 s). 4401/4403 never retry.
+- **API docs closed in production:** `docs_url`, `redoc_url` and `openapi_url` are `None` when
+  `APP_ENV=production` (test in `test_security.py`).
+- **Secrets only in dashboards:** `sync: false` in `render.yaml`; the Google key is a Render Secret File
+  (`/etc/secrets/gcp.json`). Users are created from the owner's computer with a git-ignored
+  `.env.production`; there is no sign-up endpoint.
+- **Production starts with Google Chirp3 HD voices** (free 1 M chars): the ElevenLabs free quota is almost
+  used, and a fresh database would count it as 0, so every sentence would fail first. Switch after
+  subscribing to Starter (`docs/DEPLOYMENT.md`).
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |

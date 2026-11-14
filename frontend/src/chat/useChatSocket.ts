@@ -2,6 +2,8 @@ import { useCallback, useEffect, useReducer, useRef, useState, type RefObject } 
 
 import { WS_URL } from "../config.ts";
 import {
+  CLOSE_FORBIDDEN_ORIGIN,
+  CLOSE_UNAUTHORIZED,
   MAX_MIME,
   MAX_USER_TEXT,
   parseServerMsg,
@@ -25,6 +27,16 @@ export type AudioEvent =
 
 export type AudioHandler = (event: AudioEvent) => void;
 
+/** After this long without "ready", tell the learner the server is probably waking up. */
+export const WAKING_AFTER_MS = 3000;
+/** Automatic reconnects after a network close (a sleeping server can take ~1 min to wake). */
+export const MAX_AUTO_RETRIES = 10;
+
+/** Backoff for the n-th automatic retry (0-based): 1 s, 2 s, 4 s … capped at 10 s. */
+export function retryDelayMs(n: number): number {
+  return Math.min(1000 * 2 ** n, 10_000);
+}
+
 /**
  * Owns one WebSocket for the given token: authenticates, feeds server messages
  * into the reducer, hands audio frames to `audioRef` and exposes the client commands.
@@ -32,12 +44,18 @@ export type AudioHandler = (event: AudioEvent) => void;
 export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler | null>) {
   const [state, dispatch] = useReducer(chatReducer, initialChatState);
   const [attempt, setAttempt] = useState(0);
+  const [waking, setWaking] = useState(false);
+  const retries = useRef(0);
   const socketRef = useRef<WebSocket | null>(null);
   const own = useRef(new OwnRecordings());
 
   useEffect(() => {
     let active = true; // ignore events from a socket this effect already discarded
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
     dispatch({ type: "connecting" });
+    const wakingTimer = setTimeout(() => {
+      if (active) setWaking(true);
+    }, WAKING_AFTER_MS);
     const socket = new WebSocket(`${WS_URL}/ws`);
     socket.binaryType = "arraybuffer";
     socketRef.current = socket;
@@ -65,6 +83,11 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
       } else if (msg.type === "error") {
         own.current.clear();
       }
+      if (msg.type === "ready") {
+        retries.current = 0;
+        clearTimeout(wakingTimer);
+        setWaking(false);
+      }
       if (msg.type === "audio_meta") audio?.({ kind: "meta", meta: msg });
       else if (msg.type === "tts_fallback") audio?.({ kind: "fallback", msg });
       else if (msg.type === "interrupted") audio?.({ kind: "interrupted", messageId: msg.message_id });
@@ -72,11 +95,25 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
     };
     socket.onclose = (event: CloseEvent) => {
       if (!active) return;
+      const fatal = event.code === CLOSE_UNAUTHORIZED || event.code === CLOSE_FORBIDDEN_ORIGIN;
+      if (!fatal && retries.current < MAX_AUTO_RETRIES) {
+        // Most likely the free server is asleep or restarting: keep "connecting" and retry.
+        const delay = retryDelayMs(retries.current);
+        retries.current += 1;
+        dispatch({ type: "closed", code: event.code }); // end the turn in progress, if any
+        dispatch({ type: "connecting" });
+        retryTimer = setTimeout(() => setAttempt((n) => n + 1), delay);
+        return;
+      }
+      clearTimeout(wakingTimer);
+      setWaking(false);
       dispatch({ type: "closed", code: event.code });
     };
 
     return () => {
       active = false;
+      clearTimeout(wakingTimer);
+      clearTimeout(retryTimer);
       socketRef.current = null;
       socket.close(1000);
     };
@@ -172,11 +209,16 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
   const correctionsSeen = useCallback(() => dispatch({ type: "corrections_seen" }), []);
 
   const setLevel = useCallback((level: Level) => send({ type: "set_level", level }), [send]);
-  const reconnect = useCallback(() => setAttempt((n) => n + 1), []);
+  const reconnect = useCallback(() => {
+    retries.current = 0;
+    setAttempt((n) => n + 1);
+  }, []);
   const dismissError = useCallback(() => dispatch({ type: "dismiss_error" }), []);
 
   return {
     state,
+    /** Still connecting after WAKING_AFTER_MS: the server is probably waking up. */
+    waking,
     sendText,
     sendUtterance,
     sendPronRetry,

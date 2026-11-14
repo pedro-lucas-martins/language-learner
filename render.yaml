@@ -1,0 +1,95 @@
+# Render Blueprint (docs/DEPLOYMENT.md). Secrets use sync: false and are typed in the Render
+# dashboard; the Google service-account key is uploaded as a Secret File named gcp.json.
+services:
+  - type: web
+    name: language-learner-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      # Secrets / per-deploy values: set in the dashboard.
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: VERCEL_PREVIEW_REGEX
+        sync: false
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        value: /etc/secrets/gcp.json
+      # Models, voices, prices and caps (not secret; same meaning as .env.example).
+      - key: GEMINI_CHAT_MODEL
+        value: "gemini-3.5-flash-lite"
+      - key: GEMINI_UTILITY_MODEL
+        value: "gemini-3.1-flash-lite"
+      - key: GEMINI_STT_MODEL
+        value: "gemini-3.1-flash-lite"
+      - key: GEMINI_STT_THINKING_LEVEL
+        value: ""
+      - key: GEMINI_FEEDBACK_MODEL
+        value: "gemini-3.5-flash-lite"
+      - key: GEMINI_THINKING_LEVEL
+        value: ""
+      - key: TTS_PROVIDER
+        value: "google"
+      - key: TTS_MONTHLY_CHARS
+        value: "1000000"
+      - key: TTS_FALLBACK_PROVIDER
+        value: ""
+      - key: TTS_FALLBACK_MONTHLY_CHARS
+        value: "1000000"
+      - key: GOOGLE_TTS_VOICES_PL
+        value: "pl-PL-Chirp3-HD-Kore:Kore,pl-PL-Chirp3-HD-Charon:Charon"
+      - key: GOOGLE_TTS_VOICES_PT
+        value: "pt-BR-Chirp3-HD-Kore:Kore,pt-BR-Chirp3-HD-Charon:Charon"
+      - key: ELEVENLABS_MODEL
+        value: "eleven_flash_v2_5"
+      - key: ELEVENLABS_VOICES_PL
+        value: "EXAVITQu4vr4xnSDxMaL:Sarah,JBFqnCBsd6RMkjVDRZzb:George"
+      - key: ELEVENLABS_VOICES_PT
+        value: "EXAVITQu4vr4xnSDxMaL:Sarah,JBFqnCBsd6RMkjVDRZzb:George"
+      - key: EDGE_VOICES_PL
+        value: "pl-PL-ZofiaNeural,pl-PL-MarekNeural"
+      - key: EDGE_VOICES_PT
+        value: "pt-BR-FranciscaNeural,pt-BR-AntonioNeural"
+      - key: MONTHLY_BUDGET_USD
+        value: "7"
+      - key: PRICE_CHAT_INPUT_PER_M
+        value: "0.30"
+      - key: PRICE_CHAT_OUTPUT_PER_M
+        value: "2.50"
+      - key: PRICE_UTILITY_INPUT_PER_M
+        value: "0.25"
+      - key: PRICE_UTILITY_OUTPUT_PER_M
+        value: "1.50"
+      - key: PRICE_STT_AUDIO_INPUT_PER_M
+        value: "0.50"
+      - key: PRICE_STT_OUTPUT_PER_M
+        value: "1.50"
+      - key: PRICE_FEEDBACK_INPUT_PER_M
+        value: "0.30"
+      - key: PRICE_FEEDBACK_OUTPUT_PER_M
+        value: "2.50"
+      - key: PRICE_TTS_PER_1K_CHARS
+        value: "0"
+      - key: DAILY_LLM_CALLS_PER_USER
+        value: "1200"
+      - key: DAILY_STT_SECONDS_PER_USER
+        value: "3600"
+      - key: DAILY_TTS_CHARS_PER_USER
+        value: "45000"
+      - key: TTS_CACHE_MAX_MB
+        value: "100"
+      - key: WINDOW_TURNS
+        value: "3"
+      - key: SUMMARY_BATCH_TURNS
+        value: "3"

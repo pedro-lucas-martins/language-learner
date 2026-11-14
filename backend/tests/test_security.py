@@ -94,3 +94,17 @@ def test_dev_extra_origins_only_in_development() -> None:
     assert is_allowed_origin("https://192.168.0.10:5173", dev)
     assert not is_allowed_origin("https://192.168.0.11:5173", dev)
     assert not is_allowed_origin("https://192.168.0.10:5173", prod)
+
+
+def test_api_docs_closed_in_production() -> None:
+    """/docs, /redoc and /openapi.json are not served when APP_ENV=production."""
+    import os
+    import subprocess
+    import sys
+
+    code = "from app.main import app; print(app.docs_url, app.redoc_url, app.openapi_url)"
+    env = {**os.environ, "APP_ENV": "production", "FRONTEND_URL": "https://x.vercel.app"}
+    out = subprocess.run(
+        [sys.executable, "-c", code], env=env, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    assert out == "None None None"

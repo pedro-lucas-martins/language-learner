@@ -1,4 +1,6 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+
+import { API_URL } from "../config.ts";
 
 import { t } from "../i18n.ts";
 import type { Lang } from "../protocol.ts";
@@ -11,6 +13,11 @@ interface Props {
 
 export function LoginScreen({ lang, error, onSubmit }: Props) {
   const [token, setToken] = useState("");
+
+  // Wake the (free, sleeping) server while the learner types the token.
+  useEffect(() => {
+    fetch(`${API_URL}/health`).catch(() => undefined);
+  }, []);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
