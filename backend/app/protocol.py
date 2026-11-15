@@ -78,6 +78,13 @@ class SpeakWordMsg(_Msg):
     word: str = Field(min_length=1, max_length=80)
 
 
+class TranslateMsg(_Msg):
+    """🌐 under an AI message: translate it into the learner's interface language."""
+
+    type: Literal["translate"]
+    message_id: str = Field(max_length=64)
+
+
 class StartOfSpeechMsg(_Msg):
     type: Literal["start_of_speech"]
     mime: str = Field(min_length=1, max_length=MAX_MIME)
@@ -101,6 +108,7 @@ ClientMsg = Annotated[
     | RegradeMsg
     | SetRecastMsg
     | SpeakWordMsg
+    | TranslateMsg
     | SuggestTopicMsg
     | SetThemeMsg
     | SetFactsMsg
@@ -247,6 +255,13 @@ class PronResultMsg(BaseModel):
     tip: str
 
 
+class TranslationMsg(BaseModel):
+    type: Literal["translation"] = "translation"
+    message_id: str
+    text: str
+    lang: Lang
+
+
 class ErrorMsg(BaseModel):
     type: Literal["error"] = "error"
     code: ErrorCode
@@ -267,5 +282,6 @@ ServerMsg = (
     | FeedbackMsg
     | PronResultMsg
     | UsageMsg
+    | TranslationMsg
     | ErrorMsg
 )

@@ -218,6 +218,18 @@ Short records: context → decision → consequence. Newest at the bottom.
   used, and a fresh database would count it as 0, so every sentence would fail first. Switch after
   subscribing to Starter (`docs/DEPLOYMENT.md`).
 
+## 030 — 🌐 Translate an AI message (2026-11-15)
+
+- A 🌐 button under every finished AI message (topics too) shows its translation into the interface
+  language, in smaller grey text; tapping again hides it. The learner's own messages have none.
+- **Utility model** (`gemini-3.1-flash-lite`), plain-translation prompt, temperature 0.2. Each call goes
+  into `usage_events` (daily LLM cap and monthly budget apply); about US$ 0.00005 per message.
+- **Cached** in the conversation per (message, language), and on screen: reopening costs nothing.
+  A UI-language change asks again.
+- Only AI messages of the same learner (any session): after a reconnect the old messages on screen
+  can still be translated; other learners' messages and the learner's own are refused (`bad_request`).
+- Listening mode blurs the translation too, until the message is revealed.
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |

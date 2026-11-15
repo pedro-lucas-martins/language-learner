@@ -24,6 +24,8 @@ export type ClientMsg =
   | { type: "regrade"; message_id: string; text: string }
   | { type: "set_recast"; enabled: boolean }
   | { type: "speak_word"; word: string }
+  /** 🌐 under an AI message: translate it into the interface language. */
+  | { type: "translate"; message_id: string }
   | { type: "set_ui_lang"; ui_lang: Lang }
   | { type: "set_correction"; enabled: boolean }
   | { type: "suggest_topic" }
@@ -126,6 +128,7 @@ export type ServerMsg =
       pron: PronIssue[];
     }
   | { type: "pron_result"; message_id: string; word: string; better: boolean; tip: string }
+  | { type: "translation"; message_id: string; text: string; lang: Lang }
   | { type: "error"; code: ErrorCode; message: string };
 
 const SERVER_TYPES = new Set<ServerMsg["type"]>([
@@ -141,6 +144,7 @@ const SERVER_TYPES = new Set<ServerMsg["type"]>([
   "metrics",
   "feedback",
   "pron_result",
+  "translation",
   "usage",
   "error",
 ]);

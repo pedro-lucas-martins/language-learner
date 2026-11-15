@@ -25,6 +25,7 @@ from app.protocol import (
     SpeakWordMsg,
     StartOfSpeechMsg,
     SuggestTopicMsg,
+    TranslateMsg,
     UserStartedSpeakingMsg,
     UserTextMsg,
     client_msg_adapter,
@@ -191,6 +192,8 @@ async def chat_socket(websocket: WebSocket) -> None:
                 await conversation.set_facts(msg.text)
             elif isinstance(msg, SpeakWordMsg):
                 conversation.speak_word(msg.word)
+            elif isinstance(msg, TranslateMsg):
+                conversation.translate(msg.message_id)
             elif isinstance(msg, UserStartedSpeakingMsg):
                 await conversation.interrupt()
             # A second `auth` after login is ignored.

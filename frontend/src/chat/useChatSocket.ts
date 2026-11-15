@@ -202,6 +202,14 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
     [send],
   );
   const speakWord = useCallback((word: string) => send({ type: "speak_word", word }), [send]);
+  const translate = useCallback(
+    (messageId: string): boolean => {
+      const ok = send({ type: "translate", message_id: messageId });
+      if (ok) dispatch({ type: "translate_requested", id: messageId });
+      return ok;
+    },
+    [send],
+  );
   const suggestTopic = useCallback(() => send({ type: "suggest_topic" }), [send]);
   const setTheme = useCallback((theme: string) => send({ type: "set_theme", theme }), [send]);
   const setFacts = useCallback((text: string) => send({ type: "set_facts", text }), [send]);
@@ -227,6 +235,7 @@ export function useChatSocket(token: string, audioRef?: RefObject<AudioHandler |
     setRecast,
     setCorrection,
     speakWord,
+    translate,
     suggestTopic,
     setTheme,
     setFacts,

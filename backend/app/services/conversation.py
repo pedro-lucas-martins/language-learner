@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from pydantic import BaseModel
+from sqlalchemy import select
 
 from app.config import Settings
 from app.database import session_factory
@@ -36,6 +37,7 @@ from app.protocol import (
     PronResultMsg,
     TopicMsg,
     TranscriptMsg,
+    TranslationMsg,
     TtsFallbackMsg,
     UsageMsg,
     UserInfo,
@@ -59,10 +61,12 @@ from app.services.memory import ConversationMemory
 from app.services.prompts import (
     FACTS_MAX_WORDS,
     SUMMARY_SYSTEM_PROMPT,
+    TRANSLATION_MAX_CHARS,
     chat_system_prompt,
     facts_system_prompt,
     facts_user_prompt,
     summary_user_prompt,
+    translate_system_prompt,
     truncate_words,
 )
 from app.services.sentence_buffer import SentenceBuffer
@@ -180,6 +184,8 @@ class Conversation:
         self._theme = ""
         self._pending_topic: str | None = None
         self._turns_this_session = 0
+        # 🌐: translations of this session's AI messages, by (message id, language).
+        self._translations: dict[tuple[str, str], str] = {}
 
     # --- lifecycle --------------------------------------------------------------
 
@@ -779,6 +785,63 @@ class Conversation:
             over=snap.tts_over_allowance,
             backup_over=snap.backup_over_allowance,
         )
+
+    def translate(self, message_id: str) -> None:
+        """🌐 under an AI message: translate it into the interface language (utility model)."""
+        self._spawn(self._translate(message_id))
+
+    async def _translate(self, message_id: str) -> None:
+        lang = self.learner.ui_lang
+        cached = self._translations.get((message_id, lang))
+        if cached is not None:
+            await self.send(TranslationMsg(message_id=message_id, text=cached, lang=lang))
+            return
+        try:
+            msg_uuid = uuid.UUID(message_id)
+        except ValueError:
+            await self._error("bad_request")
+            return
+        async with session_factory()() as db:
+            # Any AI message of this learner: after a reconnect the screen still shows the
+            # previous session's messages.
+            text = await db.scalar(
+                select(Message.text)
+                .join(ChatSession, ChatSession.id == Message.session_id)
+                .where(
+                    Message.id == msg_uuid,
+                    Message.role == "ai",
+                    ChatSession.user_id == self.learner.id,
+                )
+            )
+            await db.commit()  # end the read transaction before any await on the socket
+        model = self.settings.gemini_utility_model or self.settings.gemini_chat_model
+        if not text or not model:
+            await self._error("bad_request")
+            return
+        snap = await self._snapshot()
+        if snap.daily_cap_reached:
+            await self._error("quota_exceeded")
+            return
+        try:
+            translated, used = await self.llm.complete(
+                model=model,
+                system=translate_system_prompt(self.learner.target_lang, lang),
+                prompt=text[:TRANSLATION_MAX_CHARS],
+                max_output_tokens=600,
+                temperature=0.2,
+            )
+        except LlmError as exc:
+            log.warning("Translation failed: %s", exc)
+            await self._error("provider_unavailable")
+            return
+        await self._record_llm("utility", model, used)
+        translated = translated.strip()
+        if not translated:
+            await self._error("provider_unavailable")
+            return
+        self._translations[(message_id, lang)] = translated
+        await self.send(TranslationMsg(message_id=message_id, text=translated, lang=lang))
+        await self._send_usage()
 
     def pron_retry(self, audio: bytes, mime: str, word: str, message_id: str) -> None:
         """🎙 in the panel: judge one new attempt at one word."""

@@ -2,6 +2,7 @@ import {
   CLOSE_FORBIDDEN_ORIGIN,
   CLOSE_UNAUTHORIZED,
   type GrammarError,
+  type Lang,
   type PronIssue,
   type ServerMsg,
   type UserInfo,
@@ -50,6 +51,12 @@ export interface Metrics {
   totalMs: number;
 }
 
+/** 🌐 translation of one AI message, in the language it was asked in. */
+export interface Translation {
+  text: string;
+  lang: Lang;
+}
+
 export interface ChatState {
   status: ConnectionStatus;
   closeReason: CloseReason | null;
@@ -67,6 +74,10 @@ export interface ChatState {
   pronResults: Record<string, { better: boolean; tip: string }>;
   /** Corrections with mistakes that arrived since the panel was last looked at. */
   unseenCorrections: number;
+  /** 🌐 translations by AI message id. */
+  translations: Record<string, Translation>;
+  /** AI message ids whose translation was asked and has not arrived yet. */
+  translating: Record<string, true>;
 }
 
 export type ChatAction =
@@ -77,7 +88,8 @@ export type ChatAction =
   | { type: "dismiss_error" }
   /** The learner fixed a transcript (a regrade follows). */
   | { type: "edit_message"; id: string; text: string }
-  | { type: "corrections_seen" };
+  | { type: "corrections_seen" }
+  | { type: "translate_requested"; id: string };
 
 export const initialChatState: ChatState = {
   status: "connecting",
@@ -92,6 +104,8 @@ export const initialChatState: ChatState = {
   feedback: {},
   pronResults: {},
   unseenCorrections: 0,
+  translations: {},
+  translating: {},
 };
 
 function finishStreaming(messages: ChatMessage[]): ChatMessage[] {
@@ -114,6 +128,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         status: "closed",
         closeReason,
+        translating: {},
         awaitingReply: false,
         phase: "idle",
         messages: finishStreaming(state.messages),
@@ -139,6 +154,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
     case "corrections_seen":
       return { ...state, unseenCorrections: 0 };
+
+    case "translate_requested":
+      return { ...state, translating: { ...state.translating, [action.id]: true } };
 
     case "server":
       return applyServerMsg(state, action.msg);
@@ -251,6 +269,19 @@ function applyServerMsg(state: ChatState, msg: ServerMsg): ChatState {
         },
       };
 
+    case "translation": {
+      const translating = { ...state.translating };
+      delete translating[msg.message_id];
+      return {
+        ...state,
+        translating,
+        translations: {
+          ...state.translations,
+          [msg.message_id]: { text: msg.text, lang: msg.lang },
+        },
+      };
+    }
+
     case "pron_result":
       return {
         ...state,
@@ -268,6 +299,7 @@ function applyServerMsg(state: ChatState, msg: ServerMsg): ChatState {
     case "error":
       return {
         ...state,
+        translating: {},
         awaitingReply: false,
         phase: "idle",
         error: msg.message,

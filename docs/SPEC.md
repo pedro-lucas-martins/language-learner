@@ -210,6 +210,7 @@ Client → server:
 | `set_ui_lang` | `ui_lang` (`pt-BR` \| `pl-PL`) — interface and explanation language (§1) |
 | `set_correction` | `enabled` (bool) — correction in the conversation (§4.1) |
 | `speak_word` | `word` — returns cached TTS audio for the panel's ▶ button |
+| `translate` | `message_id` — 🌐 under an AI message of this learner; returns `translation` |
 
 Server → client:
 | type | payload |
@@ -224,6 +225,7 @@ Server → client:
 | `tts_fallback` | `message_id`, `sentence`, `text`, `lang` — the browser speaks this sentence with `speechSynthesis`, in sentence order |
 | `feedback` | `message_id` (the learner's message), `source` (`audio` \| `text`), `ok`, `errs`, `pron` — per §5; `pron` is empty for `text` |
 | `pron_result` | `message_id`, `word`, `better` (bool), `tip` |
+| `translation` | `message_id`, `text`, `lang` (the interface language it was translated into) |
 | `topic` | `message_id`, `text` — an AI message with no LLM call; its audio follows as usual (`audio_meta` + binary or `tts_fallback`) |
 | `interrupted` | `message_id` |
 | `metrics` | `message_id`, `stt_ms` (null for typed turns), `llm_first_token_ms`, `first_audio_ms` (null if no server audio), `total_ms` — measured from `end_of_speech` / `user_text` (§6) |

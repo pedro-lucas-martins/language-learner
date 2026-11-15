@@ -53,6 +53,9 @@ Every feedback with mistakes adds cards (`flashcards.py`, deduplicated). REST un
 `/flashcards` lists due cards and records SM-2 reviews (`sm2.py`). Over the WebSocket,
 `speak_word` sends a word's audio (`message_id = word:<word>`, cached) and `pron_retry`
 (a `start_of_speech` with `purpose: pron_retry`) returns `pron_result` judged from the audio.
+`translate` (🌐 under an AI message) checks the message is an AI message of this learner (any of
+their sessions, so it still works after a reconnect), translates it into `ui_lang` with the utility
+model, records the call like any other and caches it per session; it answers `translation`.
 
 ## A text turn
 

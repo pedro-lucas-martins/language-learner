@@ -189,3 +189,16 @@ def facts_user_prompt(previous: str, summary: str, turns: list[Turn]) -> str:
         lines.append(f"Learner: {turn.user}")
         lines.append(f"Friend: {turn.ai}")
     return "\n".join(lines)
+
+
+TRANSLATION_MAX_CHARS = 2000
+
+
+def translate_system_prompt(source_lang: str, target_lang: str) -> str:
+    """🌐: a plain translation of one AI message for the learner (no explanations)."""
+    return (
+        f"Translate the user's text from {LANG_NAMES[source_lang]} into natural, everyday "
+        f"{LANG_NAMES[target_lang]}. Keep the meaning, tone and any question. Output only the "
+        "translation: no notes, no quotes, no original text. Text already in the target "
+        "language stays as it is."
+    )

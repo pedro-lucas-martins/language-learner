@@ -22,6 +22,7 @@ import {
   PlayIcon,
   SendIcon,
   StopIcon,
+  GlobeIcon,
 } from "./icons.tsx";
 import { ProfilePage } from "./ProfilePage.tsx";
 import { SideNav, type View } from "./SideNav.tsx";
@@ -90,6 +91,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
     setRecast,
     setCorrection,
     speakWord,
+    translate,
     suggestTopic,
     setTheme,
     setFacts,
@@ -118,6 +120,8 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
   const [topicTheme, setTopicTheme] = useState("");
   const [listenMode, setListenMode] = useState(loadListenMode);
   const [revealed, setRevealed] = useState<ReadonlySet<string>>(new Set());
+  /** AI messages whose 🌐 translation is open. */
+  const [shownTranslations, setShownTranslations] = useState<ReadonlySet<string>>(new Set());
 
   function changeListenMode(on: boolean) {
     setListenMode(on);
@@ -140,6 +144,30 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
   }, [token, view, feedbackCount]);
   const listRef = useRef<HTMLDivElement>(null);
   const lang: Lang = state.user?.ui_lang ?? fallbackLang;
+
+  /** 🌐: open/close the translation; ask the server the first time (or after a UI language change). */
+  function translationFor(id: string): string | null {
+    const found = state.translations[id];
+    return found && found.lang === lang ? found.text : null;
+  }
+
+  /** Open = asked to show, and either ready or on its way (a failed request closes it). */
+  function translationOpen(id: string): boolean {
+    return shownTranslations.has(id) && (translationFor(id) !== null || Boolean(state.translating[id]));
+  }
+
+  function toggleTranslation(id: string) {
+    if (translationOpen(id)) {
+      setShownTranslations((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      return;
+    }
+    if (translationFor(id) === null && !state.translating[id] && !translate(id)) return;
+    setShownTranslations((prev) => new Set(prev).add(id));
+  }
   const ready = state.status === "ready";
 
   const entries = useMemo(
@@ -425,25 +453,46 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
                       message.text
                     )}
                     {message.streaming && <span className="ml-0.5 animate-pulse text-accent-500">▍</span>}
-                    {!message.streaming && voice.hasAudio(message.id) && (
+                    {translationOpen(message.id) && (
+                      <TranslationLine
+                        lang={lang}
+                        text={translationFor(message.id)}
+                        hidden={listenMode && !revealed.has(message.id)}
+                      />
+                    )}
+                    {!message.streaming && (
                       <div className="-mb-1 -ml-2 mt-1 flex items-center gap-0.5">
+                        {voice.hasAudio(message.id) && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => voice.replay(message.id)}
+                              aria-label={t(lang, "replay")}
+                              title={t(lang, "replay")}
+                              className="icon-btn size-11 md:size-9"
+                            >
+                              <PlayIcon className="size-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => voice.replay(message.id, 0.8)}
+                              aria-label={t(lang, "replaySlow")}
+                              title={t(lang, "replaySlow")}
+                              className="icon-btn size-11 text-xs font-semibold md:size-9"
+                            >
+                              0.8×
+                            </button>
+                          </>
+                        )}
                         <button
                           type="button"
-                          onClick={() => voice.replay(message.id)}
-                          aria-label={t(lang, "replay")}
-                          title={t(lang, "replay")}
-                          className="icon-btn size-11 md:size-9"
+                          onClick={() => toggleTranslation(message.id)}
+                          aria-pressed={translationOpen(message.id)}
+                          aria-label={t(lang, translationOpen(message.id) ? "hideTranslation" : "translate")}
+                          title={t(lang, translationOpen(message.id) ? "hideTranslation" : "translate")}
+                          className={`icon-btn size-11 md:size-9 ${translationOpen(message.id) ? "text-accent-600 dark:text-accent-400" : ""}`}
                         >
-                          <PlayIcon className="size-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => voice.replay(message.id, 0.8)}
-                          aria-label={t(lang, "replaySlow")}
-                          title={t(lang, "replaySlow")}
-                          className="icon-btn size-11 text-xs font-semibold md:size-9"
-                        >
-                          0.8×
+                          <GlobeIcon className="size-4" />
                         </button>
                       </div>
                     )}
@@ -571,5 +620,25 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
         </div>
       )}
     </div>
+  );
+}
+
+/** 🌐 translation under an AI message; blurred like the message itself in listening mode. */
+function TranslationLine({ lang, text, hidden }: { lang: Lang; text: string | null; hidden: boolean }) {
+  if (text === null) {
+    return (
+      <p role="status" className="muted mt-2 text-sm">
+        {t(lang, "translating")}
+      </p>
+    );
+  }
+  return (
+    <p
+      lang={lang}
+      className={`muted mt-2 border-t border-zinc-200 pt-2 text-sm dark:border-zinc-700 ${hidden ? "select-none blur-[5px]" : ""}`}
+      aria-hidden={hidden || undefined}
+    >
+      {text}
+    </p>
   );
 }

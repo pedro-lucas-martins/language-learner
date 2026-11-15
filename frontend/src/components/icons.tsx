@@ -65,6 +65,12 @@ export const CheckIcon = (p: IconProps) => (
     <path d="M5 12.5l4.5 4.5L19 7.5" />
   </Icon>
 );
+export const GlobeIcon = (p: IconProps) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M3.5 12h17M12 3.5c2.5 2.6 3.5 5.5 3.5 8.5s-1 5.9-3.5 8.5c-2.5-2.6-3.5-5.5-3.5-8.5s1-5.9 3.5-8.5z" />
+  </Icon>
+);
 export const PencilIcon = (p: IconProps) => (
   <Icon {...p}>
     <path d="M4 20h4L19 9l-4-4L4 16z" />

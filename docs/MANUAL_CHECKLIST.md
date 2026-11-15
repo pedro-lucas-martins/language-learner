@@ -22,5 +22,6 @@ device). Use a test user that learns Portuguese. Mark each item per width.
 | 15 | Keyboard: Tab shows a visible focus ring | | | |
 | 16 | The app can be installed (manifest + icon found; on a phone: "Add to Home screen") | | | |
 | 17 | Microphone: hold to talk, tap for hands-free, interrupt the AI, ▶ on your own recording *(real device)* | | | |
+| 18 | 🌐 under an AI message shows the translation in the interface language; tap again hides it; listening mode blurs it | | | |
 
 Last run: see `docs/DECISIONS.md` (the slice 5 entry).
