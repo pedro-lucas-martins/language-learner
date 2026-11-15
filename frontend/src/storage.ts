@@ -1,3 +1,5 @@
+import { clampVolume, DEFAULT_VOLUME } from "./audio/player.ts";
+
 /** localStorage can be missing or throw (private mode, blocked storage): never let it crash. */
 
 const TOKEN_KEY = "ll.token";
@@ -42,5 +44,25 @@ export function saveListenMode(on: boolean): void {
     window.localStorage.setItem(LISTEN_KEY, on ? "1" : "0");
   } catch {
     // Not persisted: the default (off) comes back next time.
+  }
+}
+
+const VOLUME_KEY = "ll.voiceVolume";
+
+/** AI voice volume (0–2, 1 = as received), per browser like listening mode. */
+export function loadVoiceVolume(): number {
+  try {
+    const raw = window.localStorage.getItem(VOLUME_KEY);
+    return raw === null ? DEFAULT_VOLUME : clampVolume(Number(raw));
+  } catch {
+    return DEFAULT_VOLUME;
+  }
+}
+
+export function saveVoiceVolume(value: number): void {
+  try {
+    window.localStorage.setItem(VOLUME_KEY, String(clampVolume(value)));
+  } catch {
+    // Not persisted: 100 % comes back next time.
   }
 }

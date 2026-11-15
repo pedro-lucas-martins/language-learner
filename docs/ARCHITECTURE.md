@@ -57,6 +57,9 @@ Every feedback with mistakes adds cards (`flashcards.py`, deduplicated). REST un
 their sessions, so it still works after a reconnect), translates it into `ui_lang` with the utility
 model, records the call like any other and caches it per session; it answers `translation`.
 
+AI voice volume (⚙, 0–200 %, per browser) is a Web Audio gain node behind the player's `<audio>`
+element; the learner's own recordings bypass it (always 100 %).
+
 ## A text turn
 
 1. The browser opens `/ws`. The server checks the `Origin` header by hand (CORS does not

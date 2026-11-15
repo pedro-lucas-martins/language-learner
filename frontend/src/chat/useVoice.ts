@@ -261,6 +261,7 @@ export function useVoice({ audioRef, busy, lastAiMessageId, sendUtterance, inter
     [audioVersion], // new audio arrived: a fresh function makes callers re-check
   );
   const stopSpeaking = useCallback(() => bargeIn(), [bargeIn]);
+  const setVolume = useCallback((value: number) => playerRef.current?.setVolume(value), []);
 
   // Release the microphone and silence playback when the screen goes away.
   useEffect(
@@ -284,6 +285,7 @@ export function useVoice({ audioRef, busy, lastAiMessageId, sendUtterance, inter
     replay,
     hasAudio,
     stopSpeaking,
+    setVolume,
     startClip,
     finishClip,
     playWord,

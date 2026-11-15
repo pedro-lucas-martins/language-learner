@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { t } from "../i18n.ts";
 import { LEVELS, type Lang, type Level, type UserInfo } from "../protocol.ts";
 import type { Theme } from "../theme.ts";
-import { SettingsIcon } from "./icons.tsx";
+import { MAX_VOLUME } from "../audio/player.ts";
+import { PlayIcon, SettingsIcon } from "./icons.tsx";
 
 interface Props {
   lang: Lang;
@@ -17,6 +18,11 @@ interface Props {
   onCorrection: (enabled: boolean) => void;
   listenMode: boolean;
   onListenMode: (on: boolean) => void;
+  /** AI voice volume, 0–2 (1 = 100 %). */
+  voiceVolume: number;
+  onVoiceVolume: (value: number) => void;
+  /** Replays the last AI reply; null when there is nothing to play yet. */
+  onVolumeSample: (() => void) | null;
   onLogout: () => void;
 }
 
@@ -114,6 +120,38 @@ export function SettingsMenu(props: Props) {
               className="size-5 shrink-0 accent-accent-600"
             />
           </label>
+          <div className="space-y-1 py-2">
+            <div className="flex items-center justify-between gap-3">
+              <label htmlFor="voice-volume" className="text-sm">
+                {t(lang, "voiceVolume")}
+              </label>
+              <span className="muted text-sm tabular-nums">{Math.round(props.voiceVolume * 100)}%</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="voice-volume"
+                type="range"
+                min={0}
+                max={MAX_VOLUME * 100}
+                step={5}
+                value={Math.round(props.voiceVolume * 100)}
+                onChange={(e) => props.onVoiceVolume(Number(e.target.value) / 100)}
+                aria-valuetext={`${Math.round(props.voiceVolume * 100)}%`}
+                className="h-11 w-full accent-accent-600 md:h-8"
+              />
+              <button
+                type="button"
+                onClick={() => props.onVolumeSample?.()}
+                disabled={!props.onVolumeSample}
+                aria-label={t(lang, "voiceVolumeSample")}
+                title={t(lang, "voiceVolumeSample")}
+                className="icon-btn size-11 shrink-0 md:size-9"
+              >
+                <PlayIcon className="size-4" />
+              </button>
+            </div>
+            <span className="muted block text-xs">{t(lang, "voiceVolumeHint")}</span>
+          </div>
           <label className={row} title={t(lang, "listenModeHint")}>
             <span>
               {t(lang, "listenMode")}

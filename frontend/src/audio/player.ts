@@ -5,6 +5,9 @@
  * rules). Sentences the server could not synthesize are spoken with speechSynthesis.
  * Replay never asks the server again: it uses the audio already received, and 0.8×
  * uses `playbackRate`.
+ *
+ * Volume (0–200 %) goes through a Web Audio gain node: iOS ignores `<audio>.volume`, and a
+ * gain above 1 can boost quiet voices. The learner's own recordings always play at 100 %.
  */
 import type { Lang } from "../protocol.ts";
 
@@ -13,6 +16,20 @@ export type PlayItem =
   | { kind: "speech"; messageId: string; sentence: number; text: string; lang: Lang };
 
 const MAX_KEPT_MESSAGES = 40;
+
+export const MIN_VOLUME = 0;
+export const MAX_VOLUME = 2;
+export const DEFAULT_VOLUME = 1;
+
+/** A safe volume factor: 0–2, steps of 0.05; anything invalid becomes 1. */
+export function clampVolume(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_VOLUME;
+  const clamped = Math.min(MAX_VOLUME, Math.max(MIN_VOLUME, value));
+  return Math.round(clamped * 20) / 20;
+}
+
+/** The learner's own recordings are not the AI's voice: never change their volume. */
+const isOwnClip = (item: PlayItem) => item.messageId.startsWith("own:");
 
 /** A 1-sample silent WAV, played on the first user gesture to unlock audio output. */
 function silentWav(): Blob {
@@ -42,6 +59,9 @@ export class AudioPlayer {
   private url: string | null = null;
   private rate = 1;
   private unlocked = false;
+  private volume = DEFAULT_VOLUME;
+  private ctx: AudioContext | null = null;
+  private gain: GainNode | null = null;
   private readonly library = new Map<string, PlayItem[]>();
   private readonly dropped = new Set<string>();
 
@@ -61,9 +81,49 @@ export class AudioPlayer {
   unlock(): void {
     if (this.unlocked) return;
     this.unlocked = true;
+    this.connectGain();
     const url = URL.createObjectURL(silentWav());
     this.el.src = url;
     void this.el.play().catch(() => undefined).finally(() => URL.revokeObjectURL(url));
+  }
+
+  /** 0–2 (1 = as received). Applies at once to what is playing. */
+  setVolume(value: number): void {
+    this.volume = clampVolume(value);
+    this.applyVolume();
+  }
+
+  /** Route the <audio> element through a gain node (must run inside a user gesture). */
+  private connectGain(): void {
+    const Ctx =
+      typeof window === "undefined"
+        ? undefined
+        : (window.AudioContext ??
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
+    if (!Ctx || this.ctx) return;
+    try {
+      const ctx = new Ctx();
+      const gain = ctx.createGain();
+      ctx.createMediaElementSource(this.el).connect(gain);
+      gain.connect(ctx.destination);
+      void ctx.resume().catch(() => undefined);
+      this.ctx = ctx;
+      this.gain = gain;
+    } catch {
+      this.ctx = null; // fall back to <audio>.volume (max 100 %)
+      this.gain = null;
+    }
+    this.applyVolume();
+  }
+
+  private applyVolume(): void {
+    const factor = this.current && isOwnClip(this.current) ? 1 : this.volume;
+    if (this.gain) {
+      this.gain.gain.value = factor;
+      this.el.volume = 1;
+    } else {
+      this.el.volume = Math.min(1, factor);
+    }
   }
 
   /** Keep a ready-made clip (e.g. the learner's own recording) for replay under `key`. */
@@ -125,6 +185,8 @@ export class AudioPlayer {
     }
     if (!wasPlaying) this.onChange(true);
     if (item.kind === "audio") {
+      this.applyVolume();
+      if (this.ctx?.state === "suspended") void this.ctx.resume().catch(() => undefined);
       this.url = URL.createObjectURL(item.blob);
       this.el.src = this.url;
       this.el.playbackRate = this.rate;
@@ -142,6 +204,7 @@ export class AudioPlayer {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang;
     utterance.rate = this.rate;
+    utterance.volume = Math.min(1, this.volume); // speechSynthesis cannot go above 100 %
     utterance.onend = () => this.next();
     utterance.onerror = () => this.next();
     speechSynthesis.speak(utterance);

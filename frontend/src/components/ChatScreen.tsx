@@ -7,7 +7,7 @@ import { useChatSocket, type AudioHandler } from "../chat/useChatSocket.ts";
 import { useVoice } from "../chat/useVoice.ts";
 import { t, type StringKey } from "../i18n.ts";
 import { MAX_USER_TEXT, type Lang } from "../protocol.ts";
-import { loadListenMode, saveListenMode } from "../storage.ts";
+import { loadListenMode, loadVoiceVolume, saveListenMode, saveVoiceVolume } from "../storage.ts";
 import { useTheme } from "../theme.ts";
 import { listDueCards } from "../api.ts";
 import { FeedbackPanel } from "./FeedbackPanel.tsx";
@@ -119,6 +119,7 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
   const [dueCount, setDueCount] = useState<number | null>(null);
   const [topicTheme, setTopicTheme] = useState("");
   const [listenMode, setListenMode] = useState(loadListenMode);
+  const [voiceVolume, setVoiceVolume] = useState(loadVoiceVolume);
   const [revealed, setRevealed] = useState<ReadonlySet<string>>(new Set());
   /** AI messages whose 🌐 translation is open. */
   const [shownTranslations, setShownTranslations] = useState<ReadonlySet<string>>(new Set());
@@ -144,6 +145,17 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
   }, [token, view, feedbackCount]);
   const listRef = useRef<HTMLDivElement>(null);
   const lang: Lang = state.user?.ui_lang ?? fallbackLang;
+
+  const { setVolume: applyVolume } = voice;
+  useEffect(() => applyVolume(voiceVolume), [applyVolume, voiceVolume]);
+
+  function changeVoiceVolume(value: number) {
+    setVoiceVolume(value);
+    saveVoiceVolume(value);
+  }
+
+  /** 🔊 next to the slider: the last AI reply again, at the new volume. */
+  const sampleId = lastAi && voice.hasAudio(lastAi.id) ? lastAi.id : null;
 
   /** 🌐: open/close the translation; ask the server the first time (or after a UI language change). */
   function translationFor(id: string): string | null {
@@ -329,6 +341,9 @@ export function ChatScreen({ token, fallbackLang, onAuthFailed, onLogout }: Prop
             onCorrection={setCorrection}
             listenMode={listenMode}
             onListenMode={changeListenMode}
+            voiceVolume={voiceVolume}
+            onVoiceVolume={changeVoiceVolume}
+            onVolumeSample={sampleId ? () => voice.replay(sampleId) : null}
             onLogout={onLogout}
           />
         </header>

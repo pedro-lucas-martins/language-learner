@@ -230,6 +230,18 @@ Short records: context → decision → consequence. Newest at the bottom.
   can still be translated; other learners' messages and the learner's own are refused (`bad_request`).
 - Listening mode blurs the translation too, until the message is revealed.
 
+## 031 — AI voice volume (2026-11-15)
+
+- A "Volume da voz" slider in ⚙, 0–200 % in 5 % steps, saved per browser (`ll.voiceVolume`), like
+  listening mode. 🔊 next to it replays the last AI reply at the new volume.
+- **Web Audio gain node** on the player's `<audio>` element, connected on the first tap (iOS ignores
+  `<audio>.volume`; a gain above 1 boosts quiet voices). Without Web Audio it falls back to
+  `<audio>.volume`, capped at 100 %. Browser `speechSynthesis` is capped at 100 % too.
+- Applies to every AI sound (replies, replay and 0.8×, topics, panel words); the learner's own
+  recordings always play at 100 %.
+- Risk: a loud voice in hands-free mode may reach the microphone; echo cancellation usually stops it
+  (checklist item 19, on a real phone).
+
 ## TTS benchmark results
 
 | Run | Where | Provider | Lang | TTFA p50 | TTFA p90 | Notes |
